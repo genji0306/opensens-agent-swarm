@@ -15,7 +15,23 @@ export class RpcError extends Error {
 }
 
 export class GatewayRpcClient {
-  constructor(private wsClient: GatewayWsClient) {}
+  private pendingRequests = new Map<string, { reject: (err: RpcError) => void; cleanup: () => void }>();
+  private unsubStatus: (() => void) | null = null;
+
+  constructor(private wsClient: GatewayWsClient) {
+    // Reject all pending requests when WebSocket disconnects
+    this.unsubStatus = this.wsClient.onStatusChange((status) => {
+      if (status === "disconnected" || status === "reconnecting") {
+        this.rejectAllPending("DISCONNECTED", "WebSocket disconnected");
+      }
+    });
+  }
+
+  destroy(): void {
+    this.rejectAllPending("DESTROYED", "RPC client destroyed");
+    this.unsubStatus?.();
+    this.unsubStatus = null;
+  }
 
   request<T = unknown>(
     method: string,
@@ -36,6 +52,7 @@ export class GatewayRpcClient {
           clearTimeout(timer);
           timer = null;
         }
+        this.pendingRequests.delete(id);
       };
 
       this.wsClient.onResponse(id, (frame: GatewayResponseFrame) => {
@@ -47,7 +64,10 @@ export class GatewayRpcClient {
         }
       });
 
+      this.pendingRequests.set(id, { reject, cleanup });
+
       timer = setTimeout(() => {
+        cleanup();
         reject(new RpcError("TIMEOUT", `RPC request timed out: ${method}`));
       }, timeoutMs);
 
@@ -58,5 +78,13 @@ export class GatewayRpcClient {
         params,
       });
     });
+  }
+
+  private rejectAllPending(code: string, message: string): void {
+    for (const [, entry] of this.pendingRequests) {
+      entry.cleanup();
+      entry.reject(new RpcError(code, message));
+    }
+    this.pendingRequests.clear();
   }
 }

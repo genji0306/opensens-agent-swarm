@@ -12,7 +12,7 @@ def mock_paperclip():
     client.create_issue = AsyncMock(return_value={"id": "iss_1", "key": "DL-42"})
     client.log_activity = AsyncMock(return_value={"id": "act_1"})
     client.create_approval = AsyncMock(return_value={"id": "apr_1", "status": "pending"})
-    client._request = AsyncMock(return_value={"id": "apr_1", "status": "approved"})
+    client.get_approval = AsyncMock(return_value={"id": "apr_1", "status": "approved"})
     return client
 
 
@@ -116,7 +116,7 @@ class TestCampaignApproval:
         mock_paperclip.create_approval.assert_called_once()
 
     async def test_rejected_approval(self, gov, mock_paperclip):
-        mock_paperclip._request = AsyncMock(
+        mock_paperclip.get_approval = AsyncMock(
             return_value={"id": "apr_1", "status": "rejected"}
         )
         plan = [
@@ -131,7 +131,7 @@ class TestCampaignApproval:
         assert result["reason"] == "rejected"
 
     async def test_timeout_returns_timeout(self, gov, mock_paperclip):
-        mock_paperclip._request = AsyncMock(
+        mock_paperclip.get_approval = AsyncMock(
             return_value={"id": "apr_1", "status": "pending"}
         )
         gov._approval_timeout = 0.2
@@ -157,7 +157,7 @@ class TestCampaignApproval:
         assert result["approved"] is True
         assert result["reason"] == "paperclip_unavailable"
 
-    async def test_paperclip_error_fails_open(self, gov, mock_paperclip):
+    async def test_paperclip_error_fails_closed(self, gov, mock_paperclip):
         from oas_core.adapters.paperclip import PaperclipError
         mock_paperclip.create_approval = AsyncMock(
             side_effect=PaperclipError(500, "Server error")
@@ -170,5 +170,5 @@ class TestCampaignApproval:
         with patch("oas_core.middleware.governance.emit", new_callable=AsyncMock):
             result = await gov.request_campaign_approval("req_1", plan)
 
-        assert result["approved"] is True
-        assert "fail_open" in result["reason"]
+        assert result["approved"] is False
+        assert "fail_closed" in result["reason"]
