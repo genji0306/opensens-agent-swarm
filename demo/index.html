@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OAS :: Agent Swarm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060d1b;--bg-card:#0f1a2e;--bg-card-hover:#152036;--border:#1e293b;--border-hover:#2d3f5b;
+  --accent:#06b6d4;--accent-glow:rgba(6,182,212,.15);--accent-bright:#22d3ee;
+  --text:#e2e8f0;--text-muted:#94a3b8;--text-dim:#64748b;
+  --green:#10b981;--amber:#f59e0b;--violet:#8b5cf6;--emerald:#34d399;--red:#ef4444;
+  --radius:12px;--radius-sm:8px;--radius-xs:6px;
+}
+html{font-size:15px}
+body{
+  font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;line-height:1.6;
+}
+.mono{font-family:'JetBrains Mono',monospace}
+
+/* ── Header ── */
+.header{
+  position:sticky;top:0;z-index:100;
+  background:rgba(6,13,27,.85);backdrop-filter:blur(20px) saturate(180%);
+  border-bottom:1px solid var(--border);padding:0 2rem;
+}
+.header-inner{
+  max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+}
+.logo{display:flex;align-items:center;gap:.75rem;font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+.logo-pulse{
+  width:10px;height:10px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 12px var(--accent),0 0 24px rgba(6,182,212,.3);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+.logo span{color:var(--accent)}
+
+/* ── Metrics Bar ── */
+.metrics-bar{
+  display:flex;gap:2rem;align-items:center;flex-wrap:wrap;
+}
+.metric{display:flex;align-items:baseline;gap:.35rem;font-size:.8rem}
+.metric-val{font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--accent);font-size:.9rem}
+.metric-label{color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;font-size:.7rem}
+
+/* ── Tabs ── */
+.tabs{
+  display:flex;gap:0;border-bottom:1px solid var(--border);
+  max-width:1400px;margin:0 auto;padding:0 2rem;
+}
+.tab{
+  padding:.85rem 1.5rem;cursor:pointer;font-size:.85rem;font-weight:500;
+  color:var(--text-muted);border-bottom:2px solid transparent;
+  transition:all .2s;user-select:none;letter-spacing:.01em;
+}
+.tab:hover{color:var(--text);background:rgba(6,182,212,.03)}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(6,182,212,.05)}
+
+/* ── Content ── */
+.content{max-width:1400px;margin:0 auto;padding:2rem}
+.panel{display:none}
+.panel.active{display:block;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Cards ── */
+.card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:1.5rem;transition:all .3s cubic-bezier(.16,1,.3,1);
+}
+.card:hover{border-color:var(--border-hover);background:var(--bg-card-hover);transform:translateY(-2px)}
+.card-grid{display:grid;gap:1.25rem}
+.card-grid-4{grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.card-grid-3{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+
+.section-title{
+  font-size:1.1rem;font-weight:600;margin-bottom:1.25rem;display:flex;align-items:center;gap:.5rem;
+  letter-spacing:-.01em;
+}
+.section-title::before{
+  content:'';width:3px;height:1.1em;background:var(--accent);border-radius:2px;
+}
+
+.badge{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:.15rem .55rem;border-radius:20px;font-size:.7rem;font-weight:600;
+  font-family:'JetBrains Mono',monospace;
+}
+.badge-cyan{background:rgba(6,182,212,.15);color:var(--accent)}
+.badge-green{background:rgba(16,185,129,.15);color:var(--green)}
+.badge-violet{background:rgba(139,92,246,.15);color:var(--violet)}
+.badge-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+.badge-emerald{background:rgba(52,211,153,.15);color:var(--emerald)}
+
+.tag{
+  display:inline-block;padding:.2rem .6rem;border-radius:var(--radius-xs);
+  font-family:'JetBrains Mono',monospace;font-size:.72rem;font-weight:500;
+  background:rgba(6,182,212,.08);color:var(--accent);border:1px solid rgba(6,182,212,.15);
+}
+
+/* ── Cluster Tab ── */
+.device-card .device-name{font-size:1rem;font-weight:600;margin-bottom:.25rem}
+.device-card .device-role{color:var(--text-muted);font-size:.82rem;margin-bottom:.75rem}
+.device-card .device-hw{font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-dim);margin-bottom:.5rem}
+.device-card .device-budget{font-family:'JetBrains Mono',monospace;font-size:.78rem}
+.device-icon{
+  width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  margin-bottom:.75rem;font-size:1.1rem;
+}
+
+/* ── SVG Diagram ── */
+.diagram-wrap{
+  margin-top:2rem;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:1.5rem;overflow-x:auto;
+}
+.diagram-wrap svg{display:block;margin:0 auto}
+.diagram-wrap text{font-family:'Inter',sans-serif}
+
+/* ── Skills Tab ── */
+.skill-group{margin-bottom:2rem}
+.skill-group-header{
+  display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;
+  padding-bottom:.5rem;border-bottom:1px solid var(--border);
+}
+.skill-group-name{font-weight:600;font-size:.95rem}
+.skill-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:1rem 1.15rem;display:flex;align-items:center;gap:.75rem;
+  transition:all .25s;cursor:default;
+}
+.skill-card:hover{border-color:var(--border-hover);background:var(--bg-card-hover);transform:translateX(4px)}
+.skill-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.skill-name{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:500}
+.skills-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem}
+
+/* ── DRVP Stream ── */
+.stream-controls{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+.btn{
+  padding:.5rem 1.25rem;border-radius:var(--radius-xs);border:1px solid var(--border);
+  background:var(--bg-card);color:var(--text);font-size:.82rem;font-weight:500;
+  cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;
+}
+.btn:hover{border-color:var(--accent);background:rgba(6,182,212,.08)}
+.btn-active{border-color:var(--accent);background:rgba(6,182,212,.12);color:var(--accent)}
+.stream-status{font-size:.78rem;color:var(--text-dim)}
+.stream-status .dot{
+  display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:.4rem;
+  vertical-align:middle;
+}
+.stream-status .dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
+.stream-status .dot.paused{background:var(--amber)}
+
+.event-list{display:flex;flex-direction:column;gap:.4rem}
+.event-row{
+  display:grid;grid-template-columns:90px 100px 1fr auto;gap:.75rem;align-items:center;
+  padding:.6rem 1rem;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-xs);font-size:.8rem;
+  animation:slideIn .3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+.event-time{font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:.75rem}
+.event-agent{font-weight:600;font-size:.78rem}
+.event-type{font-family:'JetBrains Mono',monospace;font-size:.73rem;color:var(--text-muted)}
+.event-detail{color:var(--text-dim);font-size:.75rem;text-align:right}
+
+/* ── Campaign DAG ── */
+.dag-wrap{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);
+  padding:2rem;overflow-x:auto;
+}
+.dag-wrap svg{display:block;margin:0 auto}
+.dag-node{cursor:default;transition:all .3s}
+.dag-legend{
+  display:flex;gap:1.5rem;margin-top:1.25rem;justify-content:center;flex-wrap:wrap;
+}
+.dag-legend-item{display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--text-muted)}
+.dag-legend-dot{width:10px;height:10px;border-radius:3px}
+.campaign-controls{display:flex;gap:1rem;align-items:center;margin-bottom:1.25rem}
+
+/* ── Governance ── */
+.budget-table{width:100%;border-collapse:collapse;margin-bottom:1.5rem}
+.budget-table th{
+  text-align:left;padding:.6rem 1rem;font-size:.75rem;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--text-dim);border-bottom:1px solid var(--border);
+  font-weight:600;
+}
+.budget-table td{
+  padding:.7rem 1rem;border-bottom:1px solid rgba(30,41,59,.5);font-size:.85rem;
+}
+.budget-table td.mono{font-family:'JetBrains Mono',monospace;font-size:.8rem}
+.util-bar-bg{
+  width:100%;height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden;
+}
+.util-bar-fill{height:100%;border-radius:4px;transition:width 1.5s ease}
+.approval-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-sm);
+  padding:1.15rem;margin-bottom:.75rem;
+}
+.approval-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.approval-title{font-weight:600;font-size:.88rem}
+.approval-detail{color:var(--text-muted);font-size:.8rem}
+.pipeline-flow{
+  display:flex;align-items:center;gap:0;flex-wrap:wrap;justify-content:center;
+  margin-top:1.5rem;
+}
+.pipeline-step{
+  padding:.55rem 1rem;background:var(--bg-card);border:1px solid var(--border);
+  border-radius:var(--radius-xs);font-size:.78rem;font-weight:500;
+  font-family:'JetBrains Mono',monospace;white-space:nowrap;
+}
+.pipeline-arrow{
+  color:var(--text-dim);font-size:.85rem;padding:0 .25rem;flex-shrink:0;
+}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .header-inner{flex-direction:column;height:auto;padding:1rem 0;gap:.75rem}
+  .metrics-bar{gap:1rem}
+  .tabs{overflow-x:auto;padding:0 1rem}
+  .tab{padding:.7rem 1rem;font-size:.8rem;white-space:nowrap}
+  .content{padding:1.25rem}
+  .event-row{grid-template-columns:80px 80px 1fr;font-size:.75rem}
+  .event-detail{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════ HEADER ════════════ -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <div class="logo-pulse"></div>
+      <span>OAS</span> :: Agent Swarm
+    </div>
+    <div class="metrics-bar">
+      <div class="metric"><span class="metric-val">4</span><span class="metric-label">Agents</span></div>
+      <div class="metric"><span class="metric-val">14</span><span class="metric-label">Skills</span></div>
+      <div class="metric"><span class="metric-val">361</span><span class="metric-label">Tests</span></div>
+      <div class="metric"><span class="metric-val">22</span><span class="metric-label">Event Types</span></div>
+      <div class="metric"><span class="metric-val">40K+</span><span class="metric-label">LOC</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ════════════ TABS ════════════ -->
+<nav class="tabs" id="tabs">
+  <div class="tab active" data-tab="cluster">Cluster</div>
+  <div class="tab" data-tab="skills">Skills</div>
+  <div class="tab" data-tab="drvp">DRVP Stream</div>
+  <div class="tab" data-tab="campaign">Campaign</div>
+  <div class="tab" data-tab="governance">Governance</div>
+</nav>
+
+<!-- ════════════ CONTENT ════════════ -->
+<main class="content">
+
+<!-- ──────── TAB 1: CLUSTER ──────── -->
+<section class="panel active" id="panel-cluster">
+  <div class="section-title">Device Architecture</div>
+  <div class="card-grid card-grid-4">
+
+    <div class="card device-card">
+      <div class="device-icon" style="background:rgba(6,182,212,.12);color:var(--accent)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <div class="device-name">Boss</div>
+      <div class="device-role">Command & Control</div>
+      <div class="device-hw">MacBook Pro</div>
+      <div class="device-budget" style="color:var(--text-dim)">No budget allocation</div>
+      <div style="margin-top:.75rem"><span class="badge badge-cyan">Human-in-the-Loop</span></div>
+    </div>
+
+    <div class="card device-card">
+      <div class="device-icon" style="background:rgba(6,182,212,.12);color:var(--accent)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="device-name">Leader</div>
+      <div class="device-role">Gateway + Orchestrator</div>
+      <div class="device-hw">Mac mini M4 &middot; 16GB</div>
+      <div class="device-budget"><span style="color:var(--accent)">$50</span><span style="color:var(--text-dim)">/day</span> &middot; <span style="color:var(--accent)">$1,500</span><span style="color:var(--text-dim)">/mo</span></div>
+      <div style="margin-top:.75rem"><span class="badge badge-cyan">Orchestrator</span></div>
+    </div>
+
+    <div class="card device-card">
+      <div class="device-icon" style="background:rgba(139,92,246,.12);color:var(--violet)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="device-name">Academic</div>
+      <div class="device-role">Research + Literature</div>
+      <div class="device-hw">Mac mini M4 &middot; 24GB</div>
+      <div class="device-budget"><span style="color:var(--violet)">$30</span><span style="color:var(--text-dim)">/day</span> &middot; <span style="color:var(--violet)">$900</span><span style="color:var(--text-dim)">/mo</span></div>
+      <div style="margin-top:.75rem"><span class="badge badge-violet">Researcher</span></div>
+    </div>
+
+    <div class="card device-card">
+      <div class="device-icon" style="background:rgba(52,211,153,.12);color:var(--emerald)">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="device-name">Experiment</div>
+      <div class="device-role">Simulation + Analysis</div>
+      <div class="device-hw">Mac mini M4 &middot; 24GB</div>
+      <div class="device-budget"><span style="color:var(--emerald)">$20</span><span style="color:var(--text-dim)">/day</span> &middot; <span style="color:var(--emerald)">$600</span><span style="color:var(--text-dim)">/mo</span></div>
+      <div style="margin-top:.75rem"><span class="badge badge-emerald">Experimenter</span></div>
+    </div>
+
+  </div>
+
+  <!-- Cluster Diagram -->
+  <div class="diagram-wrap">
+    <svg width="700" height="320" viewBox="0 0 700 320">
+      <defs>
+        <marker id="arrow-cyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#06b6d4"/>
+        </marker>
+        <marker id="arrow-dim" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+        </marker>
+      </defs>
+
+      <!-- Nodes -->
+      <rect x="280" y="20" width="140" height="56" rx="10" fill="#0f1a2e" stroke="#06b6d4" stroke-width="1.5"/>
+      <text x="350" y="45" text-anchor="middle" fill="#06b6d4" font-size="13" font-weight="600">Boss</text>
+      <text x="350" y="62" text-anchor="middle" fill="#94a3b8" font-size="10">Command & Control</text>
+
+      <rect x="280" y="130" width="140" height="56" rx="10" fill="#0f1a2e" stroke="#06b6d4" stroke-width="1.5"/>
+      <text x="350" y="155" text-anchor="middle" fill="#06b6d4" font-size="13" font-weight="600">Leader</text>
+      <text x="350" y="172" text-anchor="middle" fill="#94a3b8" font-size="10">Gateway + Orchestrator</text>
+
+      <rect x="100" y="240" width="140" height="56" rx="10" fill="#0f1a2e" stroke="#8b5cf6" stroke-width="1.5"/>
+      <text x="170" y="265" text-anchor="middle" fill="#8b5cf6" font-size="13" font-weight="600">Academic</text>
+      <text x="170" y="282" text-anchor="middle" fill="#94a3b8" font-size="10">Research + Literature</text>
+
+      <rect x="460" y="240" width="140" height="56" rx="10" fill="#0f1a2e" stroke="#34d399" stroke-width="1.5"/>
+      <text x="530" y="265" text-anchor="middle" fill="#34d399" font-size="13" font-weight="600">Experiment</text>
+      <text x="530" y="282" text-anchor="middle" fill="#94a3b8" font-size="10">Simulation + Analysis</text>
+
+      <!-- Connections -->
+      <!-- Boss -> Leader -->
+      <line x1="350" y1="76" x2="350" y2="128" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+      <!-- Leader -> Academic -->
+      <line x1="310" y1="186" x2="210" y2="238" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+      <!-- Leader -> Experiment -->
+      <line x1="390" y1="186" x2="490" y2="238" stroke="#06b6d4" stroke-width="1.5" marker-end="url(#arrow-cyan)"/>
+
+      <!-- Academic <-> Experiment (dashed) -->
+      <line x1="240" y1="268" x2="460" y2="268" stroke="#64748b" stroke-width="1" stroke-dasharray="6,4" marker-end="url(#arrow-dim)"/>
+      <text x="350" y="258" text-anchor="middle" fill="#64748b" font-size="9" font-style="italic">peer exchange</text>
+
+      <!-- Labels on arrows -->
+      <text x="338" y="105" text-anchor="end" fill="#4a6a8a" font-size="9">dispatch</text>
+      <text x="248" y="216" text-anchor="middle" fill="#4a6a8a" font-size="9">research tasks</text>
+      <text x="452" y="216" text-anchor="middle" fill="#4a6a8a" font-size="9">experiment tasks</text>
+    </svg>
+  </div>
+</section>
+
+<!-- ──────── TAB 2: SKILLS ──────── -->
+<section class="panel" id="panel-skills">
+
+  <div class="skill-group">
+    <div class="skill-group-header">
+      <span class="skill-group-name" style="color:var(--accent)">Leader</span>
+      <span class="badge badge-cyan">4 skills</span>
+    </div>
+    <div class="skills-grid">
+      <div class="skill-card"><div class="skill-dot" style="background:var(--accent)"></div><span class="skill-name">darklab-leader</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--accent)"></div><span class="skill-name">darklab-synthesis</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--accent)"></div><span class="skill-name">darklab-media-gen</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--accent)"></div><span class="skill-name">darklab-notebooklm</span></div>
+    </div>
+  </div>
+
+  <div class="skill-group">
+    <div class="skill-group-header">
+      <span class="skill-group-name" style="color:var(--violet)">Academic</span>
+      <span class="badge badge-violet">5 skills</span>
+    </div>
+    <div class="skills-grid">
+      <div class="skill-card"><div class="skill-dot" style="background:var(--violet)"></div><span class="skill-name">darklab-research</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--violet)"></div><span class="skill-name">darklab-literature</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--violet)"></div><span class="skill-name">darklab-doe</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--violet)"></div><span class="skill-name">darklab-paper</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--violet)"></div><span class="skill-name">darklab-perplexity</span></div>
+    </div>
+  </div>
+
+  <div class="skill-group">
+    <div class="skill-group-header">
+      <span class="skill-group-name" style="color:var(--emerald)">Experiment</span>
+      <span class="badge badge-emerald">5 skills</span>
+    </div>
+    <div class="skills-grid">
+      <div class="skill-card"><div class="skill-dot" style="background:var(--emerald)"></div><span class="skill-name">darklab-simulation</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--emerald)"></div><span class="skill-name">darklab-analysis</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--emerald)"></div><span class="skill-name">darklab-synthetic</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--emerald)"></div><span class="skill-name">darklab-report-data</span></div>
+      <div class="skill-card"><div class="skill-dot" style="background:var(--emerald)"></div><span class="skill-name">darklab-autoresearch</span></div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ──────── TAB 3: DRVP STREAM ──────── -->
+<section class="panel" id="panel-drvp">
+  <div class="stream-controls">
+    <button class="btn btn-active" id="btn-play" onclick="toggleStream()">
+      <span id="play-icon">&#9646;&#9646;</span> <span id="play-label">Pause</span>
+    </button>
+    <div class="stream-status">
+      <span class="dot live" id="stream-dot"></span>
+      <span id="stream-status-text">Live &mdash; streaming DRVP events</span>
+    </div>
+  </div>
+  <div class="event-list" id="event-list"></div>
+</section>
+
+<!-- ──────── TAB 4: CAMPAIGN ──────── -->
+<section class="panel" id="panel-campaign">
+  <div class="section-title">Campaign DAG &mdash; Quantum Dot Electrode Research</div>
+  <div class="campaign-controls">
+    <button class="btn" id="btn-run-dag" onclick="runDAG()">Run Campaign</button>
+    <button class="btn" onclick="resetDAG()">Reset</button>
+    <span style="font-size:.78rem;color:var(--text-dim)" id="dag-status">Ready</span>
+  </div>
+  <div class="dag-wrap">
+    <svg width="820" height="260" viewBox="0 0 820 260" id="dag-svg">
+      <defs>
+        <marker id="dag-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#64748b"/>
+        </marker>
+        <marker id="dag-arrow-active" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <path d="M0,0 L8,3 L0,6" fill="#06b6d4"/>
+        </marker>
+      </defs>
+
+      <!-- Edges -->
+      <line class="dag-edge" data-from="1" data-to="2" x1="190" y1="130" x2="290" y2="80" stroke="#64748b" stroke-width="1.5" marker-end="url(#dag-arrow)"/>
+      <line class="dag-edge" data-from="1" data-to="3" x1="190" y1="130" x2="290" y2="180" stroke="#64748b" stroke-width="1.5" marker-end="url(#dag-arrow)"/>
+      <line class="dag-edge" data-from="2" data-to="4" x1="430" y1="80" x2="500" y2="130" stroke="#64748b" stroke-width="1.5" marker-end="url(#dag-arrow)"/>
+      <line class="dag-edge" data-from="3" data-to="4" x1="430" y1="180" x2="500" y2="130" stroke="#64748b" stroke-width="1.5" marker-end="url(#dag-arrow)"/>
+      <line class="dag-edge" data-from="4" data-to="5" x1="620" y1="130" x2="680" y2="130" stroke="#64748b" stroke-width="1.5" marker-end="url(#dag-arrow)"/>
+
+      <!-- Step 1 -->
+      <g class="dag-node" id="dag-node-1">
+        <rect x="50" y="100" width="140" height="60" rx="10" fill="#0f1a2e" stroke="#1e293b" stroke-width="2"/>
+        <text x="120" y="124" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Step 1</text>
+        <text x="120" y="142" text-anchor="middle" fill="#64748b" font-size="9">research</text>
+        <circle cx="56" cy="106" r="5" fill="#1e293b" id="dag-dot-1"/>
+      </g>
+
+      <!-- Step 2 -->
+      <g class="dag-node" id="dag-node-2">
+        <rect x="290" y="50" width="140" height="60" rx="10" fill="#0f1a2e" stroke="#1e293b" stroke-width="2"/>
+        <text x="360" y="74" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Step 2</text>
+        <text x="360" y="92" text-anchor="middle" fill="#64748b" font-size="9">doe</text>
+        <circle cx="296" cy="56" r="5" fill="#1e293b" id="dag-dot-2"/>
+      </g>
+
+      <!-- Step 3 -->
+      <g class="dag-node" id="dag-node-3">
+        <rect x="290" y="150" width="140" height="60" rx="10" fill="#0f1a2e" stroke="#1e293b" stroke-width="2"/>
+        <text x="360" y="174" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Step 3</text>
+        <text x="360" y="192" text-anchor="middle" fill="#64748b" font-size="9">simulate</text>
+        <circle cx="296" cy="156" r="5" fill="#1e293b" id="dag-dot-3"/>
+      </g>
+
+      <!-- Step 4 -->
+      <g class="dag-node" id="dag-node-4">
+        <rect x="500" y="100" width="120" height="60" rx="10" fill="#0f1a2e" stroke="#1e293b" stroke-width="2"/>
+        <text x="560" y="124" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Step 4</text>
+        <text x="560" y="142" text-anchor="middle" fill="#64748b" font-size="9">analyze</text>
+        <circle cx="506" cy="106" r="5" fill="#1e293b" id="dag-dot-4"/>
+      </g>
+
+      <!-- Step 5 -->
+      <g class="dag-node" id="dag-node-5">
+        <rect x="680" y="100" width="120" height="60" rx="10" fill="#0f1a2e" stroke="#1e293b" stroke-width="2"/>
+        <text x="740" y="124" text-anchor="middle" fill="#94a3b8" font-size="11" font-weight="600">Step 5</text>
+        <text x="740" y="142" text-anchor="middle" fill="#64748b" font-size="9">synthesize</text>
+        <circle cx="686" cy="106" r="5" fill="#1e293b" id="dag-dot-5"/>
+      </g>
+
+      <!-- Step labels below -->
+      <text x="120" y="180" text-anchor="middle" fill="#4a6a8a" font-size="8" font-style="italic">quantum dot electrodes</text>
+      <text x="360" y="126" text-anchor="middle" fill="#4a6a8a" font-size="8" font-style="italic">electrode coating factors</text>
+      <text x="360" y="226" text-anchor="middle" fill="#4a6a8a" font-size="8" font-style="italic">impedance response model</text>
+      <text x="560" y="178" text-anchor="middle" fill="#4a6a8a" font-size="8" font-style="italic">simulation results</text>
+      <text x="740" y="178" text-anchor="middle" fill="#4a6a8a" font-size="8" font-style="italic">findings &amp; recs</text>
+    </svg>
+  </div>
+  <div class="dag-legend">
+    <div class="dag-legend-item"><div class="dag-legend-dot" style="background:#1e293b"></div>Pending</div>
+    <div class="dag-legend-item"><div class="dag-legend-dot" style="background:#f59e0b"></div>Running</div>
+    <div class="dag-legend-item"><div class="dag-legend-dot" style="background:#10b981"></div>Completed</div>
+  </div>
+</section>
+
+<!-- ──────── TAB 5: GOVERNANCE ──────── -->
+<section class="panel" id="panel-governance">
+  <div class="section-title">Paperclip AI &mdash; Budget Allocation</div>
+  <div class="card" style="margin-bottom:1.5rem;overflow-x:auto">
+    <table class="budget-table">
+      <thead><tr><th>Agent</th><th>Daily Budget</th><th>Monthly Budget</th><th>Utilization</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span style="color:var(--accent);font-weight:600">Leader</span></td>
+          <td class="mono">$50.00</td><td class="mono">$1,500.00</td>
+          <td class="mono" style="color:var(--accent)">62%</td>
+          <td style="width:200px"><div class="util-bar-bg"><div class="util-bar-fill" style="width:62%;background:var(--accent)"></div></div></td>
+        </tr>
+        <tr>
+          <td><span style="color:var(--violet);font-weight:600">Academic</span></td>
+          <td class="mono">$30.00</td><td class="mono">$900.00</td>
+          <td class="mono" style="color:var(--violet)">78%</td>
+          <td style="width:200px"><div class="util-bar-bg"><div class="util-bar-fill" style="width:78%;background:var(--violet)"></div></div></td>
+        </tr>
+        <tr>
+          <td><span style="color:var(--emerald);font-weight:600">Experiment</span></td>
+          <td class="mono">$20.00</td><td class="mono">$600.00</td>
+          <td class="mono" style="color:var(--emerald)">45%</td>
+          <td style="width:200px"><div class="util-bar-bg"><div class="util-bar-fill" style="width:45%;background:var(--emerald)"></div></div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Approval Workflow</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1rem;margin-bottom:2rem">
+    <div class="approval-card" style="border-left:3px solid var(--amber)">
+      <div class="approval-header">
+        <span class="approval-title">High-cost LLM Campaign</span>
+        <span class="badge badge-amber">Pending</span>
+      </div>
+      <div class="approval-detail">
+        Requesting $42.00 for multi-step GPT-4o research campaign on polymer electrode coatings.
+        Submitted by <span style="color:var(--violet)">Academic</span> &middot; 2 min ago
+      </div>
+    </div>
+    <div class="approval-card" style="border-left:3px solid var(--green)">
+      <div class="approval-header">
+        <span class="approval-title">Simulation Budget Extension</span>
+        <span class="badge badge-green">Approved</span>
+      </div>
+      <div class="approval-detail">
+        Approved $15.00 extension for impedance modeling simulation batch.
+        Approved by <span style="color:var(--accent)">Boss</span> &middot; 14 min ago
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Middleware Pipeline</div>
+  <div class="card">
+    <div class="pipeline-flow">
+      <div class="pipeline-step" style="border-color:var(--accent);color:var(--accent)">Budget</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step">Audit</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step" style="border-color:var(--amber);color:var(--amber)">Governance</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step" style="border-color:var(--violet);color:var(--violet)">Memory</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step">Handler</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step">Post-Store</div>
+      <div class="pipeline-arrow">&rarr;</div>
+      <div class="pipeline-step" style="border-color:var(--green);color:var(--green)">DRVP</div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ════════════ SCRIPTS ════════════ -->
+<script>
+// ── Tab Navigation ──
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── DRVP Stream ──
+const EVENTS = [
+  { type: 'request.created',           agent: 'Boss',      color: '#06b6d4', detail: 'New research campaign: quantum dot electrodes' },
+  { type: 'request.dispatched',        agent: 'Leader',    color: '#06b6d4', detail: 'Dispatched to Academic + Experiment pipeline' },
+  { type: 'budget.check',              agent: 'Paperclip', color: '#10b981', detail: 'Budget validated: $30.00 remaining for Academic' },
+  { type: 'llm.call.started',          agent: 'Academic',  color: '#8b5cf6', detail: 'GPT-4o call: literature survey on QD electrodes' },
+  { type: 'skill.invoked',             agent: 'Academic',  color: '#8b5cf6', detail: 'darklab-research :: quantum dot electrode review' },
+  { type: 'llm.call.completed',        agent: 'Academic',  color: '#8b5cf6', detail: 'Tokens: 4,218 in / 2,903 out ($0.08)' },
+  { type: 'campaign.step.completed',   agent: 'Leader',    color: '#06b6d4', detail: 'Step 1/5 complete: research phase' },
+  { type: 'campaign.approval.required',agent: 'Boss',      color: '#f59e0b', detail: 'Approve $42 simulation batch? [Y/n]' },
+  { type: 'llm.call.started',          agent: 'Experiment',color: '#34d399', detail: 'Claude call: impedance response modeling' },
+  { type: 'skill.invoked',             agent: 'Experiment',color: '#34d399', detail: 'darklab-simulation :: impedance model v2' },
+  { type: 'budget.warning',            agent: 'Paperclip', color: '#f59e0b', detail: 'Experiment at 85% daily budget ($17/$20)' },
+  { type: 'skill.completed',           agent: 'Experiment',color: '#34d399', detail: 'Simulation complete: 847 data points generated' },
+  { type: 'campaign.completed',        agent: 'Leader',    color: '#10b981', detail: 'Campaign finished: 5/5 steps, $38.42 total cost' },
+];
+
+let streamRunning = true;
+let eventIndex = 0;
+let streamInterval;
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function now() { const d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); }
+
+function addEvent() {
+  const ev = EVENTS[eventIndex % EVENTS.length];
+  eventIndex++;
+  const list = document.getElementById('event-list');
+  const row = document.createElement('div');
+  row.className = 'event-row';
+  row.innerHTML =
+    '<span class="event-time">' + now() + '</span>' +
+    '<span class="event-agent" style="color:' + ev.color + '">' + ev.agent + '</span>' +
+    '<span class="event-type">' + ev.type + '</span>' +
+    '<span class="event-detail">' + ev.detail + '</span>';
+  list.prepend(row);
+  while (list.children.length > 15) list.removeChild(list.lastChild);
+}
+
+function startStream() {
+  streamInterval = setInterval(addEvent, 1500);
+  addEvent();
+}
+
+function toggleStream() {
+  streamRunning = !streamRunning;
+  const btn = document.getElementById('btn-play');
+  const dot = document.getElementById('stream-dot');
+  const label = document.getElementById('play-label');
+  const icon = document.getElementById('play-icon');
+  const status = document.getElementById('stream-status-text');
+  if (streamRunning) {
+    startStream();
+    btn.classList.add('btn-active');
+    dot.className = 'dot live';
+    label.textContent = 'Pause';
+    icon.innerHTML = '&#9646;&#9646;';
+    status.innerHTML = 'Live &mdash; streaming DRVP events';
+  } else {
+    clearInterval(streamInterval);
+    btn.classList.remove('btn-active');
+    dot.className = 'dot paused';
+    label.textContent = 'Play';
+    icon.innerHTML = '&#9654;';
+    status.innerHTML = 'Paused';
+  }
+}
+
+startStream();
+
+// ── Campaign DAG Animation ──
+const DAG_STEPS = [
+  { id: 1, parallel: [1] },
+  { id: 2, parallel: [2, 3] },
+  { id: 4, parallel: [4] },
+  { id: 5, parallel: [5] },
+];
+
+let dagRunning = false;
+
+function setNodeState(id, state) {
+  const node = document.getElementById('dag-node-' + id);
+  const dot = document.getElementById('dag-dot-' + id);
+  const rect = node.querySelector('rect');
+  const texts = node.querySelectorAll('text');
+  if (state === 'running') {
+    rect.setAttribute('stroke', '#f59e0b');
+    rect.setAttribute('stroke-width', '2.5');
+    dot.setAttribute('fill', '#f59e0b');
+    texts[0].setAttribute('fill', '#f59e0b');
+  } else if (state === 'completed') {
+    rect.setAttribute('stroke', '#10b981');
+    rect.setAttribute('stroke-width', '2');
+    dot.setAttribute('fill', '#10b981');
+    texts[0].setAttribute('fill', '#10b981');
+  } else {
+    rect.setAttribute('stroke', '#1e293b');
+    rect.setAttribute('stroke-width', '2');
+    dot.setAttribute('fill', '#1e293b');
+    texts[0].setAttribute('fill', '#94a3b8');
+  }
+}
+
+function resetDAG() {
+  dagRunning = false;
+  for (let i = 1; i <= 5; i++) setNodeState(i, 'pending');
+  document.getElementById('dag-status').textContent = 'Ready';
+  document.getElementById('btn-run-dag').disabled = false;
+}
+
+async function runDAG() {
+  if (dagRunning) return;
+  dagRunning = true;
+  document.getElementById('btn-run-dag').disabled = true;
+  resetDAG();
+  dagRunning = true;
+  const statusEl = document.getElementById('dag-status');
+
+  for (const phase of DAG_STEPS) {
+    if (!dagRunning) return;
+    for (const id of phase.parallel) setNodeState(id, 'running');
+    statusEl.textContent = 'Running step(s): ' + phase.parallel.join(', ');
+    await new Promise(r => setTimeout(r, 2000));
+    if (!dagRunning) return;
+    for (const id of phase.parallel) setNodeState(id, 'completed');
+  }
+  statusEl.textContent = 'Campaign complete';
+  dagRunning = false;
+  document.getElementById('btn-run-dag').disabled = false;
+}
+</script>
+
+</body>
+</html>

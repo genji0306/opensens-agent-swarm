@@ -29,6 +29,10 @@
 
 Every request &mdash; from a Telegram command to a multi-step research campaign &mdash; flows through a governed pipeline with real-time visual feedback.
 
+<p align="center">
+  <img src="demo/Opensens Swarm Demo.png" alt="Device Architecture" width="720" />
+</p>
+
 ---
 
 ## Screenshots
