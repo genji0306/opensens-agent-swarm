@@ -88,10 +88,12 @@ export class GatewayWsClient {
     this.responseHandlers.set(id, handler);
   }
 
-  send(data: unknown): void {
+  send(data: unknown): boolean {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(data));
+      return true;
     }
+    return false;
   }
 
   private doConnect(): void {

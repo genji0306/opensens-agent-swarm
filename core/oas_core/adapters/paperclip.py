@@ -65,7 +65,12 @@ class PaperclipClient:
         if resp.status_code >= 400:
             detail = resp.text[:500]
             raise PaperclipError(resp.status_code, detail)
-        return resp.json() if resp.content else {}
+        if not resp.content:
+            return {}
+        try:
+            return resp.json()
+        except Exception:
+            raise PaperclipError(resp.status_code, f"Invalid JSON: {resp.text[:200]}")
 
     # --- Cost Events ---
 

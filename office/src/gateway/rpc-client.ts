@@ -71,12 +71,16 @@ export class GatewayRpcClient {
         reject(new RpcError("TIMEOUT", `RPC request timed out: ${method}`));
       }, timeoutMs);
 
-      this.wsClient.send({
+      const sent = this.wsClient.send({
         type: "req",
         id,
         method,
         params,
       });
+      if (!sent) {
+        cleanup();
+        reject(new RpcError("SEND_FAILED", `WebSocket not open, cannot send: ${method}`));
+      }
     });
   }
 
