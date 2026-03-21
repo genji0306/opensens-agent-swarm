@@ -200,6 +200,8 @@ async def drvp_sse(company_id: str, request: Request):
         channel = f"drvp:{company_id}"
         await pubsub.subscribe(channel)
         logger.info("drvp_sse_connected", company_id=company_id)
+        max_idle_s = 3600  # Drop stalled clients after 1 hour of no real messages
+        idle_s = 0
         try:
             while True:
                 if await request.is_disconnected():
@@ -212,7 +214,12 @@ async def drvp_sse(company_id: str, request: Request):
                     if isinstance(data, bytes):
                         data = data.decode()
                     yield f"data: {data}\n\n"
+                    idle_s = 0
                 else:
+                    idle_s += 1
+                    if idle_s >= max_idle_s:
+                        logger.info("drvp_sse_idle_timeout", company_id=company_id)
+                        break
                     # Keepalive to prevent proxy/browser timeouts
                     yield ": keepalive\n\n"
         finally:

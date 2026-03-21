@@ -11,6 +11,15 @@ from nacl.exceptions import BadSignatureError
 
 
 def load_signing_key(path: Path) -> SigningKey:
+    # Warn if private key has overly permissive permissions
+    mode = path.stat().st_mode & 0o777
+    if mode & 0o077:
+        import warnings
+        warnings.warn(
+            f"Private key {path} has permissions {oct(mode)} — "
+            f"should be 0o600. Run: chmod 600 {path}",
+            stacklevel=2,
+        )
     raw = path.read_bytes()
     return SigningKey(base64.b64decode(raw))
 
