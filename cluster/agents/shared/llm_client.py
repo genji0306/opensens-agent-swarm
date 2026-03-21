@@ -181,6 +181,8 @@ async def call_litellm(
     model: str = "plan",
     max_tokens: int = 4096,
     temperature: float = 0.0,
+    *,
+    _retry_depth: int = 0,
 ) -> str:
     """Route through LiteLLM proxy using OpenAI-compatible API.
 
@@ -212,10 +214,14 @@ async def call_litellm(
             if router:
                 router.mark_credits_exhausted()
                 logger.warning("credits_exhausted_detected", model=model, error=str(exc))
-                # Retry with Ollama fallback
+                if _retry_depth > 0:
+                    raise RuntimeError(
+                        f"Ollama fallback also failed: {exc}"
+                    ) from exc
+                # Retry with Ollama fallback (once only)
                 return await call_litellm(
                     prompt, system, "llama3.1", max_tokens=min(max_tokens, 4096),
-                    temperature=temperature,
+                    temperature=temperature, _retry_depth=_retry_depth + 1,
                 )
         raise
 
