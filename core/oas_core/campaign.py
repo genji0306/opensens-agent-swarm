@@ -145,6 +145,35 @@ class CampaignEngine:
         self._max_parallel = max_parallel
         self._step_timeout = step_timeout
 
+    @staticmethod
+    def _check_for_cycles(steps: list[CampaignStep]) -> None:
+        """Verify the dependency graph has no cycles (Kahn's algorithm)."""
+        step_ids = {s.step for s in steps}
+        in_degree: dict[int, int] = {s.step: 0 for s in steps}
+        adj: dict[int, list[int]] = {s.step: [] for s in steps}
+
+        for s in steps:
+            for dep in s.depends_on:
+                if dep in step_ids:
+                    adj[dep].append(s.step)
+                    in_degree[s.step] += 1
+
+        queue = [sid for sid, deg in in_degree.items() if deg == 0]
+        visited = 0
+        while queue:
+            node = queue.pop()
+            visited += 1
+            for neighbor in adj[node]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+
+        if visited != len(steps):
+            raise ValueError(
+                f"Campaign plan contains a dependency cycle "
+                f"({visited}/{len(steps)} steps reachable)"
+            )
+
     async def execute(
         self,
         request_id: str,
@@ -159,6 +188,9 @@ class CampaignEngine:
         """
         steps = [CampaignStep.from_dict(d) for d in plan]
         step_map = {s.step: s for s in steps}
+
+        # Cycle detection — verify the dependency graph is a DAG
+        self._check_for_cycles(steps)
 
         campaign_start = datetime.now(timezone.utc)
 

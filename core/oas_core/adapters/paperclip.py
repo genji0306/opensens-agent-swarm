@@ -162,6 +162,10 @@ class PaperclipClient:
             "POST", f"/api/companies/{self.company_id}/approvals", json=body
         )
 
+    async def get_approval(self, approval_id: str) -> dict:
+        """GET /api/approvals/:approvalId"""
+        return await self._request("GET", f"/api/approvals/{approval_id}")
+
     # --- Agent / Budget ---
 
     async def get_agent_budget(self, agent_id: str) -> dict:

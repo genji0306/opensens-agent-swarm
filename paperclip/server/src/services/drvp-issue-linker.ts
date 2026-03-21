@@ -40,10 +40,21 @@ export function startDrvpIssueLinker(db: Db, companyId: string): DrvpIssueLinker
   const costs = costService(db);
   const approvalSvc = approvalService(db);
 
-  // Maps request_id → { issueId, issueIdentifier }
-  const requestIssueMap = new Map<string, { issueId: string; identifier: string }>();
+  // Maps request_id → { issueId, issueIdentifier, createdAt }
+  const requestIssueMap = new Map<string, { issueId: string; identifier: string; createdAt: number }>();
   // Maps agent_name → agent row (id) — cached to avoid repeated lookups
   const agentIdCache = new Map<string, string>();
+
+  // Evict stale entries older than 24 hours every 30 minutes
+  const ENTRY_TTL_MS = 24 * 60 * 60 * 1000;
+  const evictionInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, val] of requestIssueMap) {
+      if (now - val.createdAt > ENTRY_TTL_MS) {
+        requestIssueMap.delete(key);
+      }
+    }
+  }, 30 * 60 * 1000);
 
   const unsubscribe = subscribeCompanyLiveEvents(companyId, (event) => {
     if (event.type !== "drvp.event") return;
@@ -124,7 +135,7 @@ export function startDrvpIssueLinker(db: Db, companyId: string): DrvpIssueLinker
   async function handleRequestCreated(drvp: DrvpPayload, requestId: string) {
     // Idempotency: skip if already has an issue_id from the event
     if (drvp.issue_id) {
-      requestIssueMap.set(requestId, { issueId: drvp.issue_id, identifier: drvp.issue_id });
+      requestIssueMap.set(requestId, { issueId: drvp.issue_id, identifier: drvp.issue_id, createdAt: Date.now() });
       return;
     }
 
@@ -134,7 +145,7 @@ export function startDrvpIssueLinker(db: Db, companyId: string): DrvpIssueLinker
     // Check DB in case of restart
     const existing = await findIssueByBillingCode(requestId);
     if (existing) {
-      requestIssueMap.set(requestId, existing);
+      requestIssueMap.set(requestId, { ...existing, createdAt: Date.now() });
       return;
     }
 
@@ -156,7 +167,7 @@ export function startDrvpIssueLinker(db: Db, companyId: string): DrvpIssueLinker
         billingCode: requestId,
       });
 
-      requestIssueMap.set(requestId, { issueId: newIssue.id, identifier: newIssue.identifier });
+      requestIssueMap.set(requestId, { issueId: newIssue.id, identifier: newIssue.identifier, createdAt: Date.now() });
 
       await logActivity(db, {
         companyId,
@@ -392,6 +403,7 @@ export function startDrvpIssueLinker(db: Db, companyId: string): DrvpIssueLinker
   return {
     stop: () => {
       unsubscribe();
+      clearInterval(evictionInterval);
       requestIssueMap.clear();
       agentIdCache.clear();
       logger.info("DRVP issue auto-linker stopped");

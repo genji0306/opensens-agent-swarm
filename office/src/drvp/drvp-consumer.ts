@@ -37,6 +37,9 @@ const DRVP_TO_VISUAL_STATUS: Partial<Record<DRVPEventType, AgentVisualStatus>> =
 const handoffTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 const HANDOFF_LINK_DURATION_MS = 8_000;
 
+/** Track browser-blocked recovery timers per agent to prevent stale overwrites. */
+const browserBlockedTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 /**
  * Dispatch a single DRVP event into the frontend stores.
  * Call this from the SSE onMessage handler.
@@ -48,6 +51,12 @@ export function dispatchDrvpEvent(event: DRVPEvent): void {
   // 2. Map to office-store visual status if applicable
   const visualStatus = DRVP_TO_VISUAL_STATUS[event.event_type];
   if (visualStatus) {
+    // Cancel any stale browser-blocked recovery timer for this agent
+    const existingBbTimer = browserBlockedTimers.get(event.agent_name);
+    if (existingBbTimer) {
+      clearTimeout(existingBbTimer);
+      browserBlockedTimers.delete(event.agent_name);
+    }
     useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, visualStatus);
   }
 
@@ -183,9 +192,18 @@ function handleCampaignApprovalRequired(_event: DRVPEvent): void {
 
 function handleBrowserBlocked(event: DRVPEvent): void {
   // Domain blocked → brief error state, then auto-recover to thinking
-  useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "error");
   const agentName = event.agent_name;
-  setTimeout(() => {
-    useOfficeStore.getState().setAgentVisualStatusByName(agentName, "thinking");
-  }, 3_000);
+  useOfficeStore.getState().setAgentVisualStatusByName(agentName, "error");
+
+  // Cancel any existing recovery timer for this agent
+  const existing = browserBlockedTimers.get(agentName);
+  if (existing) clearTimeout(existing);
+
+  browserBlockedTimers.set(
+    agentName,
+    setTimeout(() => {
+      browserBlockedTimers.delete(agentName);
+      useOfficeStore.getState().setAgentVisualStatusByName(agentName, "thinking");
+    }, 3_000),
+  );
 }
