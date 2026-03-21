@@ -1,19 +1,7 @@
-<p align="center">
-  <img src="paperclip/doc/assets/header.png" alt="Opensens Agent Swarm" width="600" />
-</p>
-
 <h1 align="center">Opensens Agent Swarm</h1>
 
 <p align="center">
   <strong>A unified agentic research platform for the DarkLab distributed AI cluster</strong>
-</p>
-
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white" alt="Python 3.11+" />
-  <img src="https://img.shields.io/badge/node-20+-339933?logo=node.js&logoColor=white" alt="Node 20+" />
-  <img src="https://img.shields.io/badge/react-19-61dafb?logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/tests-430_passing-brightgreen" alt="430 Tests" />
-  <img src="https://img.shields.io/badge/license-proprietary-lightgrey" alt="License" />
 </p>
 
 ---
