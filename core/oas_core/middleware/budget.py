@@ -61,8 +61,13 @@ class BudgetMiddleware:
             try:
                 agent_data = await self.paperclip.get_agent_budget(self.agent_id)
                 budget_cents = agent_data.get("budgetMonthlyCents", 0)
-                summary = await self.paperclip.get_cost_summary()
-                spent_cents = summary.get("totalCents", 0)
+                # Use per-agent costs, not company-wide total
+                agents_costs = await self.paperclip.get_costs_by_agent()
+                spent_cents = 0
+                for entry in agents_costs:
+                    if entry.get("agentId") == self.agent_id:
+                        spent_cents = entry.get("totalCents", 0)
+                        break
 
                 remaining_cents = budget_cents - spent_cents
                 usage_ratio = spent_cents / budget_cents if budget_cents > 0 else 0.0
@@ -116,7 +121,7 @@ class BudgetMiddleware:
         cost_usd: float,
     ) -> None:
         """Post-report cost after an LLM call completes."""
-        cost_cents = max(1, round(cost_usd * 100))
+        cost_cents = max(0, round(cost_usd * 100))
 
         # Always record locally as fallback
         if self._fallback_record:

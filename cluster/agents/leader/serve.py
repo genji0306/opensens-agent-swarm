@@ -16,6 +16,8 @@ import time
 import uuid
 from typing import Any
 
+import os
+
 import httpx
 import structlog
 import uvicorn
@@ -36,6 +38,28 @@ from leader.media_gen import handle as media_gen_handle
 logger = structlog.get_logger("darklab.serve")
 
 app = FastAPI(title="DarkLab Leader", version="2.2.0")
+
+# --- API key authentication ---
+
+_API_KEY = os.environ.get("DARKLAB_API_KEY", "")
+
+# Endpoints that do not require authentication
+_PUBLIC_PATHS = {"/health"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Validate Bearer token on all non-public endpoints."""
+    if _API_KEY and request.url.path not in _PUBLIC_PATHS:
+        auth = request.headers.get("authorization", "")
+        if not auth.startswith("Bearer ") or auth[7:] != _API_KEY:
+            return StreamingResponse(
+                iter(['{"detail":"Unauthorized"}']),
+                status_code=401,
+                media_type="application/json",
+            )
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -366,8 +390,19 @@ def _build_task(req: WebhookRequest, task_type: TaskType) -> Task:
     )
 
 
+# Allowed reply URL prefixes — restrict SSRF surface
+_REPLY_ALLOWLIST = [
+    "http://localhost:",
+    "http://127.0.0.1:",
+    "http://192.168.23.",
+]
+
+
 async def _reply(reply_url: str, data: dict) -> None:
     """POST result back to Liaison Broker reply endpoint."""
+    if not any(reply_url.startswith(prefix) for prefix in _REPLY_ALLOWLIST):
+        logger.warning("reply_url_blocked", url=reply_url, reason="not in allowlist")
+        return
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30) as client:
