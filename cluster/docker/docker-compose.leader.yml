@@ -1,0 +1,48 @@
+# DarkLab Leader — Docker Compose overlay
+#
+# Merge with the existing PicoClaw stack on the Leader Mac mini:
+#   cp -r darklab-installer/ ~/darklab/darklab-installer/
+#   cd ~/darklab
+#   docker compose -f docker-compose.yml -f darklab-installer/docker/docker-compose.leader.yml up --build
+#
+# Or add services directly to ~/darklab/docker-compose.yml.
+
+services:
+
+  # ── DarkLab Leader Agent ──────────────────────────────────────────────────
+  darklab-leader:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.leader
+    restart: unless-stopped
+    ports:
+      - "8100:8100"
+    volumes:
+      - darklab-home:/root/.darklab
+      - ${PUBLIC_DIR:-./data/public}:/root/.darklab/artifacts/public
+    environment:
+      DARKLAB_ROLE: leader
+      DARKLAB_HOME: /root/.darklab
+      LITELLM_BASE_URL: http://litellm:4000/v1
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_AI_API_KEY: ${GOOGLE_AI_API_KEY:-}
+      DARKLAB_ACADEMIC_HOST: ${DARKLAB_ACADEMIC_HOST:-}
+      DARKLAB_ACADEMIC_PORT: ${DARKLAB_ACADEMIC_PORT:-8200}
+      DARKLAB_EXPERIMENT_HOST: ${DARKLAB_EXPERIMENT_HOST:-}
+      DARKLAB_EXPERIMENT_PORT: ${DARKLAB_EXPERIMENT_PORT:-8300}
+    networks:
+      - darklab
+    depends_on:
+      - litellm
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8100/health').raise_for_status()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  darklab-home:
+
+networks:
+  darklab:
+    external: true

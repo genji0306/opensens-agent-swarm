@@ -1,0 +1,54 @@
+[project]
+name = "darklab-installer"
+version = "2.1.0"
+description = "Automated installer for the DarkLab distributed AI research cluster"
+requires-python = ">=3.11"
+
+dependencies = [
+    "pydantic>=2.0",
+    "anthropic>=0.39",
+    "openai>=1.0",
+    "google-generativeai>=0.8",
+    "httpx>=0.27",
+    "python-dotenv>=1.0",
+    "pynacl>=1.5",
+    "structlog>=24.0",
+]
+
+[project.optional-dependencies]
+leader = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-docx>=1.0",
+    "python-pptx>=1.0",
+]
+academic = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "browser-use>=0.2",
+    "langchain-anthropic>=0.3",
+    "playwright>=1.40",
+]
+experiment = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "matplotlib>=3.8",
+    "numpy>=1.26",
+    "scipy>=1.12",
+    "scikit-learn>=1.4",
+    "torch>=2.1",
+    "plotly>=5.18",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["agents"]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

@@ -1,0 +1,59 @@
+{
+  "metrics": {
+    "activeAgents": "活跃 Agent",
+    "totalTokens": "总 Tokens",
+    "collaboration": "协作度",
+    "tokenRate": "Token 速率",
+    "tokenRateUnit": "/min",
+    "tabs": {
+      "overview": "概览",
+      "trend": "趋势",
+      "topology": "拓扑",
+      "activity": "活跃"
+    }
+  },
+  "agentDetail": {
+    "deselect": "取消选择",
+    "toolCallHistory": "工具调用历史"
+  },
+  "eventTimeline": {
+    "newEvents": "新事件 ↓",
+    "browserNavigate": "正在浏览",
+    "browserBlocked": "域名被拦截",
+    "boostCall": "加速调用"
+  },
+  "tokenChart": {
+    "total": "总:",
+    "totalLine": "总量"
+  },
+  "activityHeatmap": {
+    "eventsUnit": "events"
+  },
+  "paperclip": {
+    "spend": "开支",
+    "approvals": "待审批",
+    "openIssues": "待处理",
+    "budgetGauges": "预算使用",
+    "activeIssues": "活跃任务",
+    "noData": "暂无治理数据",
+    "noActiveIssues": "暂无活跃任务",
+    "campaignsRunning": "{{count}} 个活动正在运行",
+    "campaignsRunning_other": "{{count}} 个活动正在运行",
+    "awaitingApproval": "{{count}} 个待审批",
+    "boostEnabled": "{{agents}} 已加速"
+  },
+  "requestCard": {
+    "step": "步骤 {{current}}/{{total}}",
+    "qualityScore": "质量:{{score}}%",
+    "approvalNeeded": "需审批",
+    "elapsed": "耗时"
+  },
+  "issueList": {
+    "priority": {
+      "critical": "P0",
+      "high": "P1",
+      "medium": "P2",
+      "low": "P3"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+# DarkLab Experiment Agent - OpenClaw Node-Host Configuration
+# This file configures the Experiment node-host capabilities
+
+node-host:
+  name: darklab-experiment
+  capabilities:
+    - system
+  commands:
+    - darklab-simulation
+    - darklab-analysis
+    - darklab-synthetic
+    - darklab-report-data
+    - darklab-autoresearch
