@@ -65,7 +65,12 @@ class PaperclipClient:
         if resp.status_code >= 400:
             detail = resp.text[:500]
             raise PaperclipError(resp.status_code, detail)
-        return resp.json() if resp.content else {}
+        if not resp.content:
+            return {}
+        try:
+            return resp.json()
+        except Exception:
+            raise PaperclipError(resp.status_code, f"Invalid JSON: {resp.text[:200]}")
 
     # --- Cost Events ---
 
@@ -161,6 +166,10 @@ class PaperclipClient:
         return await self._request(
             "POST", f"/api/companies/{self.company_id}/approvals", json=body
         )
+
+    async def get_approval(self, approval_id: str) -> dict:
+        """GET /api/approvals/:approvalId"""
+        return await self._request("GET", f"/api/approvals/{approval_id}")
 
     # --- Agent / Budget ---
 

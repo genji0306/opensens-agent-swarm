@@ -168,12 +168,15 @@ class Pipeline:
             return result
 
         except Exception as e:
-            # DRVP: request failed
-            await emit(DRVPEvent(
-                event_type=DRVPEventType.REQUEST_FAILED,
-                request_id=req_id,
-                agent_name=agent_name,
-                device=device,
-                payload={"task_id": task_id, "error": str(e)},
-            ))
+            # DRVP: request failed (wrapped to avoid swallowing the original)
+            try:
+                await emit(DRVPEvent(
+                    event_type=DRVPEventType.REQUEST_FAILED,
+                    request_id=req_id,
+                    agent_name=agent_name,
+                    device=device,
+                    payload={"task_id": task_id, "error": str(e)},
+                ))
+            except Exception:
+                logger.warning("drvp_emit_in_error_handler_failed", exc_info=True)
             raise

@@ -11,7 +11,9 @@ from oas_core.adapters.paperclip import PaperclipError
 def mock_paperclip():
     pc = AsyncMock()
     pc.get_agent_budget.return_value = {"budgetMonthlyCents": 10000}
-    pc.get_cost_summary.return_value = {"totalCents": 2000}
+    pc.get_costs_by_agent.return_value = [
+        {"agentId": "agent_test456", "totalCents": 2000},
+    ]
     pc.report_cost.return_value = {"id": "evt_1"}
     return pc
 
@@ -43,14 +45,18 @@ class TestCheckBudget:
         assert any(e.event_type.value == "budget.check" for e in events)
 
     async def test_warning_at_80_percent(self, middleware, mock_paperclip):
-        mock_paperclip.get_cost_summary.return_value = {"totalCents": 8500}
+        mock_paperclip.get_costs_by_agent.return_value = [
+            {"agentId": "agent_test456", "totalCents": 8500},
+        ]
         with patch("oas_core.middleware.budget.emit", new_callable=AsyncMock) as mock_emit:
             await middleware.check_budget("req_1", "leader", "leader")
         events = [call.args[0] for call in mock_emit.call_args_list]
         assert any(e.event_type.value == "budget.warning" for e in events)
 
     async def test_exhausted_raises(self, middleware, mock_paperclip):
-        mock_paperclip.get_cost_summary.return_value = {"totalCents": 10001}
+        mock_paperclip.get_costs_by_agent.return_value = [
+            {"agentId": "agent_test456", "totalCents": 10001},
+        ]
         with patch("oas_core.middleware.budget.emit", new_callable=AsyncMock):
             with pytest.raises(RuntimeError, match="exhausted"):
                 await middleware.check_budget("req_1", "leader", "leader")
@@ -66,6 +72,16 @@ class TestCheckBudget:
         with patch("oas_core.middleware.budget.emit", new_callable=AsyncMock):
             result = await mw.check_budget("req_1", "leader", "leader")
         assert result["source"] == "file_lock"
+
+    async def test_zero_spend_when_agent_not_in_costs(self, middleware, mock_paperclip):
+        """When agent has no cost entries yet, spent should be 0."""
+        mock_paperclip.get_costs_by_agent.return_value = [
+            {"agentId": "other_agent", "totalCents": 5000},
+        ]
+        with patch("oas_core.middleware.budget.emit", new_callable=AsyncMock):
+            result = await middleware.check_budget("req_1", "leader", "leader")
+        assert result["spent_cents"] == 0
+        assert result["remaining_cents"] == 10000
 
 
 class TestReportCost:
@@ -106,11 +122,12 @@ class TestReportCost:
         # Should not raise — fallback still records
         middleware._fallback_record.assert_called_once()
 
-    async def test_minimum_cost_cents_is_one(self, middleware, mock_paperclip):
+    async def test_zero_cost_recorded_as_zero(self, middleware, mock_paperclip):
+        """Zero-cost calls (e.g. boost tier) should record 0 cents, not 1."""
         with patch("oas_core.middleware.budget.emit", new_callable=AsyncMock):
             await middleware.report_cost(
                 "req_1", "leader", "leader",
-                "gemini", "gemini-flash", 10, 10, 0.001,
+                "aiclient", "gemini-flash", 10, 10, 0.0,
             )
         kwargs = mock_paperclip.report_cost.call_args[1]
-        assert kwargs["cost_cents"] >= 1
+        assert kwargs["cost_cents"] == 0

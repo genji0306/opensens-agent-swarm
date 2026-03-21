@@ -110,9 +110,9 @@ class OpenClawClient:
 
         self._shutdown = False
         self._ws = await ws_connect(self.url)
-        self._recv_task = asyncio.create_task(self._message_loop())
 
-        # Wait for connect.challenge
+        # Read the challenge BEFORE starting the message loop to avoid a race
+        # where the loop consumes the challenge frame first.
         challenge = await asyncio.wait_for(self._ws.recv(), timeout=10.0)
         frame = json.loads(challenge)
         if frame.get("type") != "event" or frame.get("event") != "connect.challenge":
@@ -133,6 +133,10 @@ class OpenClawClient:
         }
         if self.token:
             params["auth"] = {"token": self.token}
+
+        # Start the message loop now — the challenge is consumed, so the loop
+        # will only see the connect response and subsequent frames.
+        self._recv_task = asyncio.create_task(self._message_loop())
 
         result = await self._request("connect", params)
         self._connected = True
@@ -269,7 +273,7 @@ class OpenClawClient:
             raise OpenClawError("NOT_CONNECTED", "WebSocket not connected")
 
         request_id = str(uuid.uuid4())
-        future: asyncio.Future = asyncio.get_event_loop().create_future()
+        future: asyncio.Future = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
 
         frame = {

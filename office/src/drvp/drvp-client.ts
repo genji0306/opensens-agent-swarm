@@ -22,13 +22,17 @@ export class DrvpSseClient {
    * Connect to the Leader DRVP SSE endpoint.
    * @param leaderUrl  Base URL of the Leader FastAPI server (e.g. "http://192.168.23.25:8100")
    * @param companyId  Paperclip company UUID
+   * @param token      Optional auth token (EventSource doesn't support headers, so passed as query param)
    */
-  connect(leaderUrl: string, companyId: string): void {
+  connect(leaderUrl: string, companyId: string, token?: string): void {
     if (this.eventSource) {
       this.disconnect();
     }
 
-    const url = `${leaderUrl.replace(/\/+$/, "")}/drvp/events/${companyId}`;
+    let url = `${leaderUrl.replace(/\/+$/, "")}/drvp/events/${companyId}`;
+    if (token) {
+      url += `?token=${encodeURIComponent(token)}`;
+    }
     const es = new EventSource(url);
 
     es.onopen = () => {

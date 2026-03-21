@@ -169,6 +169,12 @@ class ClaudeCodeAgent:
             return result
 
         except asyncio.TimeoutError:
+            # Kill the orphaned subprocess to prevent resource leaks
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
             await emit(DRVPEvent(
                 event_type=DRVPEventType.TOOL_CALL_FAILED,
                 request_id=request_id,

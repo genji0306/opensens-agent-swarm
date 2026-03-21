@@ -6,11 +6,15 @@ Integrates ModelRouter for tiered routing: Anthropic (planning) / Ollama (execut
 from __future__ import annotations
 
 import asyncio
-import fcntl
 import json
 import time
 from pathlib import Path
 from typing import Any
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]  # Windows/non-Unix
 
 import structlog
 
@@ -98,7 +102,8 @@ def _check_and_record_spend(cost_usd: float, provider: str, model: str) -> None:
     bf.touch(exist_ok=True)
 
     with open(bf, "r+") as f:
-        fcntl.flock(f, fcntl.LOCK_EX)
+        if fcntl:
+            fcntl.flock(f, fcntl.LOCK_EX)
         try:
             content = f.read()
             data = json.loads(content) if content.strip() else {"total_usd": 0.0, "calls": []}
@@ -123,7 +128,8 @@ def _check_and_record_spend(cost_usd: float, provider: str, model: str) -> None:
             f.write(json.dumps(data, indent=2))
             f.flush()
         finally:
-            fcntl.flock(f, fcntl.LOCK_UN)
+            if fcntl:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 # --- Optional Paperclip budget middleware (set by init_budget_middleware) ---
@@ -172,7 +178,8 @@ async def _record_spend(
             cost_usd=cost,
         )
     else:
-        _check_and_record_spend(cost, provider, model)
+        # Run blocking file-lock I/O off the event loop
+        await asyncio.to_thread(_check_and_record_spend, cost, provider, model)
 
 
 async def call_litellm(
@@ -181,6 +188,8 @@ async def call_litellm(
     model: str = "plan",
     max_tokens: int = 4096,
     temperature: float = 0.0,
+    *,
+    _retry_depth: int = 0,
 ) -> str:
     """Route through LiteLLM proxy using OpenAI-compatible API.
 
@@ -212,10 +221,14 @@ async def call_litellm(
             if router:
                 router.mark_credits_exhausted()
                 logger.warning("credits_exhausted_detected", model=model, error=str(exc))
-                # Retry with Ollama fallback
+                if _retry_depth > 0:
+                    raise RuntimeError(
+                        f"Ollama fallback also failed: {exc}"
+                    ) from exc
+                # Retry with Ollama fallback (once only)
                 return await call_litellm(
                     prompt, system, "llama3.1", max_tokens=min(max_tokens, 4096),
-                    temperature=temperature,
+                    temperature=temperature, _retry_depth=_retry_depth + 1,
                 )
         raise
 

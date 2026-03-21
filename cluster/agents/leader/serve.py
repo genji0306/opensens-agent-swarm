@@ -16,6 +16,8 @@ import time
 import uuid
 from typing import Any
 
+import os
+
 import httpx
 import structlog
 import uvicorn
@@ -36,6 +38,28 @@ from leader.media_gen import handle as media_gen_handle
 logger = structlog.get_logger("darklab.serve")
 
 app = FastAPI(title="DarkLab Leader", version="2.2.0")
+
+# --- API key authentication ---
+
+_API_KEY = os.environ.get("DARKLAB_API_KEY", "")
+
+# Endpoints that do not require authentication
+_PUBLIC_PATHS = {"/health"}
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    """Validate Bearer token on all non-public endpoints."""
+    if _API_KEY and request.url.path not in _PUBLIC_PATHS:
+        auth = request.headers.get("authorization", "")
+        if not auth.startswith("Bearer ") or auth[7:] != _API_KEY:
+            return StreamingResponse(
+                iter(['{"detail":"Unauthorized"}']),
+                status_code=401,
+                media_type="application/json",
+            )
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -176,6 +200,8 @@ async def drvp_sse(company_id: str, request: Request):
         channel = f"drvp:{company_id}"
         await pubsub.subscribe(channel)
         logger.info("drvp_sse_connected", company_id=company_id)
+        max_idle_s = 3600  # Drop stalled clients after 1 hour of no real messages
+        idle_s = 0
         try:
             while True:
                 if await request.is_disconnected():
@@ -188,7 +214,12 @@ async def drvp_sse(company_id: str, request: Request):
                     if isinstance(data, bytes):
                         data = data.decode()
                     yield f"data: {data}\n\n"
+                    idle_s = 0
                 else:
+                    idle_s += 1
+                    if idle_s >= max_idle_s:
+                        logger.info("drvp_sse_idle_timeout", company_id=company_id)
+                        break
                     # Keepalive to prevent proxy/browser timeouts
                     yield ": keepalive\n\n"
         finally:
@@ -366,8 +397,19 @@ def _build_task(req: WebhookRequest, task_type: TaskType) -> Task:
     )
 
 
+# Allowed reply URL prefixes — restrict SSRF surface
+_REPLY_ALLOWLIST = [
+    "http://localhost:",
+    "http://127.0.0.1:",
+    "http://192.168.23.",
+]
+
+
 async def _reply(reply_url: str, data: dict) -> None:
     """POST result back to Liaison Broker reply endpoint."""
+    if not any(reply_url.startswith(prefix) for prefix in _REPLY_ALLOWLIST):
+        logger.warning("reply_url_blocked", url=reply_url, reason="not in allowlist")
+        return
     import httpx
     try:
         async with httpx.AsyncClient(timeout=30) as client:

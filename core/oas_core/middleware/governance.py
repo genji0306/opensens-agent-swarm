@@ -228,8 +228,9 @@ class GovernanceMiddleware:
 
         except PaperclipError as e:
             logger.warning("approval_request_failed: %s", e)
-            # Fail-open: allow execution if Paperclip is broken
-            return {"approved": True, "approval_id": None, "reason": "paperclip_error_fail_open"}
+            # Fail-closed: block campaign execution when governance is unavailable.
+            # Approval gates are safety controls — bypassing them on outage is risky.
+            return {"approved": False, "approval_id": None, "reason": "paperclip_error_fail_closed"}
 
     async def _poll_approval(self, approval_id: str) -> str:
         """Poll Paperclip for approval status until resolved or timeout.
@@ -242,9 +243,7 @@ class GovernanceMiddleware:
         elapsed = 0.0
         while elapsed < self._approval_timeout:
             try:
-                data = await self.paperclip._request(
-                    "GET", f"/api/approvals/{approval_id}"
-                )
+                data = await self.paperclip.get_approval(approval_id)
                 status = data.get("status", "pending")
                 if status in ("approved", "rejected"):
                     logger.info(

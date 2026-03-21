@@ -117,7 +117,8 @@ def wrap_agent_as_node(
                 content = json.dumps(result if isinstance(result, dict) else {"result": str(result)})
         except Exception as exc:
             logger.error("agent_node_error", extra={"agent": agent_name, "error": str(exc)})
-            content = f'{{"error": "{exc}", "agent": "{agent_name}", "status": "error"}}'
+            import json as _json
+            content = _json.dumps({"error": str(exc), "agent": agent_name, "status": "error"})
 
         return {"messages": [AIMessage(content=content, name=agent_name)]}
 
