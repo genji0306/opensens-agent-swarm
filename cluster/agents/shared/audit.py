@@ -4,6 +4,11 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    import fcntl
+except ImportError:
+    fcntl = None  # type: ignore[assignment]
+
 from shared.config import settings
 from shared.models import Task, TaskResult
 
@@ -14,8 +19,16 @@ def _audit_path() -> Path:
 
 def _write_entry(entry: dict) -> None:
     path = _audit_path()
+    line = json.dumps(entry, default=str) + "\n"
     with open(path, "a") as f:
-        f.write(json.dumps(entry, default=str) + "\n")
+        if fcntl:
+            fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            f.write(line)
+            f.flush()
+        finally:
+            if fcntl:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def log_task(task: Task) -> None:

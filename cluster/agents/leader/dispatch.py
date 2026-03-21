@@ -397,6 +397,11 @@ async def plan_campaign(request: str) -> list[dict]:
     try:
         return json.loads(response)
     except json.JSONDecodeError:
+        logger.warning(
+            "plan_campaign_json_parse_failed",
+            response_preview=response[:200],
+            fallback="single_research_step",
+        )
         return [{"step": 1, "command": "research", "args": request, "depends_on": []}]
 
 
