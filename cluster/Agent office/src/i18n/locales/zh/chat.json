@@ -1,0 +1,39 @@
+{
+  "dock": {
+    "collapseDock": "收起对话",
+    "expandDock": "展开对话",
+    "attachmentWip": "附件（开发中）",
+    "placeholder": "输入消息... (Enter 发送, Shift+Enter 换行)",
+    "startNewChat": "开始一段新的对话",
+    "thinkingStatus": "思考中..."
+  },
+  "agentSelector": {
+    "defaultLabel": "Agent"
+  },
+  "dialog": {
+    "sendMessage": "发送消息",
+    "killConfirm": "终止确认",
+    "inputPlaceholder": "输入指令...",
+    "killWarning": "确定要终止 <strong>{{name}}</strong> 的当前运行吗？此操作不可撤销。",
+    "kill": "终止"
+  },
+  "chatDialog": {
+    "loadingHistory": "加载历史消息...",
+    "scrollToBottom": "滚动到底部"
+  },
+  "sessionSwitcher": {
+    "noSessions": "暂无其他会话",
+    "newSession": "新建会话",
+    "newSessionWith": "与 {{agent}} 新建会话",
+    "newSessionTooltip": "新建对话"
+  },
+  "contextMenu": {
+    "pause": "暂停",
+    "resume": "恢复",
+    "notSupported": "暂不支持",
+    "kill": "终止",
+    "sendMessage": "发送消息",
+    "viewDetail": "查看详情",
+    "operatorRequired": "需要 operator 权限"
+  }
+}

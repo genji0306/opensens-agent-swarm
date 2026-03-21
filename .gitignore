@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+*.so
+
+# Node
+node_modules/
+.pnpm-store/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage/
+.nyc_output/
+
+# Build outputs
+office/dist/
+paperclip/ui/dist/
+paperclip/server/dist/
+*.tsbuildinfo
+
+# Frameworks (read-only external references — clone separately)
+frameworks/
+
+# Code review graph (local tooling)
+code-review-graph/
+.code-review-graph/
+.code-review-graphignore
+
+# uv lock (large, reproducible)
+# uv.lock
+
+# Large media
+*.mp4
+*.mov
+
+# Misc
+*.log
+.mcp.json
+demo/

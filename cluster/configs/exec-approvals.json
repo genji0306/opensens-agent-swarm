@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "defaults": {
+    "security": "allowlist",
+    "ask": "off",
+    "autoAllowSkills": true
+  },
+  "agents": {
+    "*": {
+      "security": "allowlist",
+      "allowlist": [
+        { "pattern": "~/.darklab/agents/**" },
+        { "pattern": "~/.openclaw/skills/darklab-*/scripts/run.sh" },
+        { "pattern": "~/.darklab/.venv/bin/python3" },
+        { "pattern": "/usr/local/bin/uv" },
+        { "pattern": "/opt/homebrew/bin/uv" },
+        { "pattern": "/bin/bash" },
+        { "pattern": "/usr/bin/git" }
+      ]
+    }
+  }
+}

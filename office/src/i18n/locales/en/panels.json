@@ -1,0 +1,59 @@
+{
+  "metrics": {
+    "activeAgents": "Active Agents",
+    "totalTokens": "Total Tokens",
+    "collaboration": "Collaboration",
+    "tokenRate": "Token Rate",
+    "tokenRateUnit": "/min",
+    "tabs": {
+      "overview": "Overview",
+      "trend": "Trend",
+      "topology": "Topology",
+      "activity": "Activity"
+    }
+  },
+  "agentDetail": {
+    "deselect": "Deselect",
+    "toolCallHistory": "Tool Call History"
+  },
+  "eventTimeline": {
+    "newEvents": "New events ↓",
+    "browserNavigate": "Browsing",
+    "browserBlocked": "Domain blocked",
+    "boostCall": "Boost call"
+  },
+  "tokenChart": {
+    "total": "Total:",
+    "totalLine": "Total"
+  },
+  "activityHeatmap": {
+    "eventsUnit": "events"
+  },
+  "paperclip": {
+    "spend": "Spend",
+    "approvals": "Approvals",
+    "openIssues": "Open",
+    "budgetGauges": "Budget Utilization",
+    "activeIssues": "Active Issues",
+    "noData": "No governance data",
+    "noActiveIssues": "No active issues",
+    "campaignsRunning": "{{count}} campaign running",
+    "campaignsRunning_other": "{{count}} campaigns running",
+    "awaitingApproval": "{{count}} awaiting approval",
+    "boostEnabled": "{{agents}} boosted"
+  },
+  "requestCard": {
+    "step": "Step {{current}}/{{total}}",
+    "qualityScore": "Q:{{score}}%",
+    "approvalNeeded": "Approval",
+    "elapsed": "Elapsed"
+  },
+  "issueList": {
+    "priority": {
+      "critical": "P0",
+      "high": "P1",
+      "medium": "P2",
+      "low": "P3"
+    }
+  }
+}

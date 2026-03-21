@@ -1,0 +1,60 @@
+{
+  "topbar": {
+    "activeCount": "活跃 <strong>{{active}}/{{total}}</strong>",
+    "tokens": "Tokens <strong>{{count}}</strong>",
+    "activeCountText": "活跃",
+    "tokensLabel": "Tokens",
+    "console": "控制台",
+    "office": "办公室",
+    "pageTitles": {
+      "dashboard": "仪表盘",
+      "channels": "渠道",
+      "skills": "技能",
+      "cron": "定时任务",
+      "agents": "智能体管理",
+      "settings": "设置",
+      "fallback": "控制台"
+    },
+    "viewMode": {
+      "switchTo": "切换到 {{mode}} 视图",
+      "mobileNotSupported": "小屏幕不支持 3D 模式",
+      "webglNotSupported": "当前浏览器不支持 3D 渲染"
+    },
+    "theme": {
+      "switchToDark": "切换到暗色模式",
+      "switchToLight": "切换到亮色模式"
+    },
+    "language": {
+      "switchToEn": "切换到英文",
+      "switchToZh": "切换到中文"
+    }
+  },
+  "sidebar": {
+    "agents": "智能体",
+    "expand": "展开侧栏",
+    "collapse": "折叠侧栏",
+    "closeSidebar": "关闭侧栏",
+    "expandSidebar": "展开侧栏",
+    "collapseSidebar": "收起侧栏",
+    "metricsTitle": "概览 / 趋势",
+    "agentList": "智能体 列表",
+    "subAgents": "子智能体",
+    "agentDetail": "智能体 详情",
+    "eventTimeline": "事件时间轴",
+    "searchPlaceholder": "搜索 Agent...",
+    "filters": {
+      "all": "全部",
+      "active": "活跃",
+      "idle": "空闲",
+      "error": "错误"
+    }
+  },
+  "consoleNav": {
+    "dashboard": "仪表盘",
+    "agents": "智能体",
+    "channels": "渠道",
+    "skills": "技能",
+    "cron": "定时任务",
+    "settings": "设置"
+  }
+}

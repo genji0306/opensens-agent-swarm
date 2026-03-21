@@ -1,0 +1,7 @@
+#!/bin/bash
+# DarkLab Media Gen Agent runner — invoked by OpenClaw system.run
+set -euo pipefail
+source "${HOME}/.darklab/.env" 2>/dev/null || true
+export PYTHONPATH="${HOME}/.darklab/agents:${PYTHONPATH:-}"
+cd "${HOME}/.darklab"
+exec uv run python3 -m leader.media_gen "$@"

@@ -1,0 +1,7 @@
+{
+  "type": "openclaw_gateway",
+  "url": "ws://localhost:18789",
+  "clientId": "paperclip-controller",
+  "autoPairOnFirstConnect": true,
+  "sessionKeyStrategy": "issue"
+}

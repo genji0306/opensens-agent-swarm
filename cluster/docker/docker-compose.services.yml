@@ -1,0 +1,66 @@
+# DarkLab Services — Docker Compose overlay
+#
+# Adds OpenViking (memory), AIClient-2-API (boost tier) to the Leader stack.
+#
+# Usage:
+#   cd ~/darklab
+#   docker compose -f docker-compose.yml \
+#     -f darklab-installer/docker/docker-compose.leader.yml \
+#     -f darklab-installer/docker/docker-compose.services.yml \
+#     up -d
+#
+# Or merge services into ~/darklab/docker-compose.yml directly.
+
+services:
+
+  # ── OpenViking (Agent Memory Server) ──────────────────────────────────
+  # Context database for persistent agent memory with tiered retrieval.
+  # Port 1933 — REST API for read/write/search operations.
+  openviking:
+    image: ghcr.io/volcengine/openviking:main
+    restart: unless-stopped
+    ports:
+      - "1933:1933"
+    volumes:
+      - openviking-data:/app/data
+      - ${OPENVIKING_CONF:-./configs/openviking.conf}:/app/ov.conf:ro
+    environment:
+      OV_DATA_DIR: /app/data
+    networks:
+      - darklab
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:1933/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── AIClient-2-API (Boost Tier Proxy) ─────────────────────────────────
+  # Converts free client OAuth accounts (Gemini CLI, Kiro, Codex) into
+  # an OpenAI-compatible endpoint. Zero API cost.
+  # Port 3456 — OpenAI-compatible /v1/chat/completions
+  aiclient-api:
+    image: justlikemaki/aiclient-2-api:latest
+    restart: unless-stopped
+    ports:
+      - "3456:3000"
+    volumes:
+      - ${AICLIENT_CONFIGS:-./configs/aiclient}:/app/configs
+    environment:
+      REQUIRED_API_KEY: ${AICLIENT_API_KEY:-darklab-internal}
+      NODE_ENV: production
+    networks:
+      - darklab
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-H", "Authorization: Bearer ${AICLIENT_API_KEY:-darklab-internal}", "http://127.0.0.1:3000/v1/models"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  openviking-data:
+
+networks:
+  darklab:
+    external: true

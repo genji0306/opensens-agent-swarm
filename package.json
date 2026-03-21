@@ -1,0 +1,12 @@
+{
+  "name": "opensens-agent-swarm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Opensens Agent Swarm — unified agentic research platform",
+  "workspaces": [
+    "office",
+    "paperclip",
+    "paperclip/ui",
+    "paperclip/server"
+  ]
+}

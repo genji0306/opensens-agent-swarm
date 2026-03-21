@@ -1,0 +1,21 @@
+# DarkLab Academic Agent - OpenClaw Node-Host Configuration
+# This file configures the Academic node-host capabilities
+
+node-host:
+  name: darklab-academic
+  capabilities:
+    - system
+    - browser  # For Perplexity and Google browser automation
+  commands:
+    - darklab-research
+    - darklab-literature
+    - darklab-doe
+    - darklab-paper
+    - darklab-perplexity
+
+browser:
+  profiles:
+    - name: perplexity-research
+      description: Pre-authenticated Perplexity Pro session
+    - name: google-research
+      description: Pre-authenticated Google account for Scholar

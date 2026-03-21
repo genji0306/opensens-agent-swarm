@@ -1,0 +1,29 @@
+{
+  "metrics": {
+    "activeAgents": "活跃 Agent",
+    "totalTokens": "总 Tokens",
+    "collaboration": "协作度",
+    "tokenRate": "Token 速率",
+    "tokenRateUnit": "/min",
+    "tabs": {
+      "overview": "概览",
+      "trend": "趋势",
+      "topology": "拓扑",
+      "activity": "活跃"
+    }
+  },
+  "agentDetail": {
+    "deselect": "取消选择",
+    "toolCallHistory": "工具调用历史"
+  },
+  "eventTimeline": {
+    "newEvents": "新事件 ↓"
+  },
+  "tokenChart": {
+    "total": "总:",
+    "totalLine": "总量"
+  },
+  "activityHeatmap": {
+    "eventsUnit": "events"
+  }
+}

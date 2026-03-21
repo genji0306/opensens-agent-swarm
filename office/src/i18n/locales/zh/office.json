@@ -1,0 +1,9 @@
+{
+  "loading3D": "加载 3D 场景...",
+  "zones": {
+    "desk": "固定工位区",
+    "meeting": "会议区",
+    "hotDesk": "热工位区",
+    "lounge": "休息区"
+  }
+}
