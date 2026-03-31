@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/node-20+-339933?logo=node.js&logoColor=white" alt="Node 20+" />
   <img src="https://img.shields.io/badge/react-19-61dafb?logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/tests-447_passing-brightgreen" alt="447 Tests" />
+  <img src="https://img.shields.io/badge/tests-581_passing-brightgreen" alt="581 Tests" />
   <img src="https://img.shields.io/badge/license-proprietary-lightgrey" alt="License" />
 </p>
 
@@ -18,8 +18,9 @@
 
 **Opensens Agent Swarm (OAS)** is a self-governing AI research lab that runs autonomous scientific research on a Mac mini cluster. It merges:
 
-- **DarkLab's agent infrastructure** &mdash; dispatch routing, budget enforcement, 14 research skills, multi-AI cross-validation
-- **Agentic frameworks** &mdash; LangGraph Swarm, OpenViking memory, agency-agents personas, deepagents harness
+- **DarkLab's agent infrastructure** &mdash; dispatch routing, budget enforcement, 16 research skills, multi-AI cross-validation
+- **Agentic frameworks** &mdash; LangGraph Swarm, OpenViking memory, agency-agents personas, deepagents harness, DeerFlow research
+- **Self-evolution** &mdash; OpenClaw-RL reinforcement learning on live conversations, MiroShark debate simulation for synthetic training
 - **Paperclip governance** &mdash; org chart, issues, approvals, budgets, cost ledger
 - **Agent Office visualization** &mdash; real-time 2D/3D digital office with DRVP event streaming
 
@@ -47,6 +48,14 @@ Every request &mdash; from a Telegram command to a multi-step research campaign 
     <td><img src="office/assets/console-agent.png" alt="Agents" width="480" /></td>
   </tr>
 </table>
+
+### TurboMOQ: Hybrid KV-Cache Compression
+
+<p align="center">
+  <img src="docs/assets/turbomoq-infographic.png" alt="TurboMOQ: Hybrid KV-Cache Compression for Long-Context Local AI" width="960" />
+</p>
+
+<p align="center"><em>13.7x context expansion on Mac Mini M4 16GB — from 55K to 752K tokens per agent via split K/V strategy with progressive temporal tiering</em></p>
 
 ---
 
@@ -162,7 +171,7 @@ Incoming text ──> audit.log ──> memory.pre_load (inject prior_context)
 ```
 Opensens Agent Swarm/
 │
-├── core/                          # Shared framework (24 modules, 4,750 LOC)
+├── core/                          # Shared framework (24+ modules, ~5,000 LOC)
 │   └── oas_core/
 │       ├── swarm.py               # LangGraph swarm builder
 │       ├── handoff.py             # Governed handoff tool factory
@@ -170,11 +179,12 @@ Opensens Agent Swarm/
 │       ├── persona.py             # Agency-agents persona loader (16 agents)
 │       ├── campaign.py            # Campaign engine (DAG + parallel execution)
 │       ├── evaluation.py          # Self-evaluation (rule + LLM scoring)
+│       ├── model_router.py        # Tiered model selection (PLANNING/EXECUTION/BOOST)
 │       ├── deep_agent.py          # Deepagents subprocess wrapper
 │       ├── sandbox.py             # NemoClaw sandbox manager
 │       ├── middleware/            # Pipeline: budget → audit → governance → memory
 │       ├── protocols/             # DRVP events + unified event schema
-│       ├── adapters/              # Paperclip REST + OpenClaw WebSocket clients
+│       ├── adapters/              # Paperclip, OpenClaw, DeerFlow clients
 │       └── subagents/             # Claude Code CLI sub-agent
 │
 ├── cluster/                       # DarkLab cluster agents & installer
@@ -198,16 +208,22 @@ Opensens Agent Swarm/
 │   ├── ui/                        # React 19 dashboard (Kanban, org chart, costs)
 │   └── packages/                  # db (Drizzle, 37 tables), shared (Zod), adapters
 │
-├── frameworks/                    # External references (not committed, see below)
+├── frameworks/                    # External references (git-ignored, clone separately)
+│   ├── OpenClaw-RL-main/         # Async RL for agent self-evolution
+│   ├── MiroShark-main/           # Multi-agent debate/simulation engine
+│   ├── langgraph-swarm/          # LangGraph multi-agent handoff
+│   ├── openviking/               # Context database for AI agents
+│   ├── deer-flow-main/           # DeerFlow 2.0 research harness
+│   └── ...                       # 12 more reference frameworks
 │
 └── docs/                          # Architecture docs & roadmaps
 ```
 
-> **Note:** The `frameworks/` directory contains read-only reference repos (LangGraph Swarm, OpenViking, agency-agents, deepagents, NemoClaw, OpenClaw, browser-use, etc.) and is excluded from version control. Clone them separately if needed.
+> **Note:** The `frameworks/` directory is excluded from version control. It contains 16 read-only reference repos including OpenClaw-RL (RL self-evolution), MiroShark (debate simulation), LangGraph Swarm, OpenViking, DeerFlow, and others. Clone them separately as needed.
 
 ---
 
-## Research Skills (14)
+## Research Skills (19)
 
 | # | Skill | Node | Description |
 |---|-------|------|-------------|
@@ -222,9 +238,14 @@ Opensens Agent Swarm/
 | 9 | `synthetic` | Experiment | Synthetic data generation |
 | 10 | `report-data` | Experiment | Data report generation with visualizations |
 | 11 | `autoresearch` | Experiment | Autonomous multi-step research campaigns |
-| 12 | `synthesize` | Leader | Cross-agent result synthesis |
-| 13 | `report` | Leader | Media generation (PDF, presentations) |
-| 14 | `notebooklm` | Leader | NotebookLM-style knowledge management |
+| 12 | `deerflow` | Leader | Deep multi-step research via DeerFlow harness |
+| 13 | `synthesize` | Leader | Cross-agent result synthesis |
+| 14 | `report` | Leader | Media generation (PDF, presentations) |
+| 15 | `notebooklm` | Leader | NotebookLM-style knowledge management |
+| 16 | `debate` | Leader | Multi-agent debate simulation via MiroShark |
+| 17 | `deepresearch` | Leader | Iterative deep research with convergence scoring |
+| 18 | `swarmresearch` | Leader | Multi-angle parallel research (5 perspectives) |
+| 19 | `parametergolf` | Experiment | Compressed LM training under 16MB |
 
 ---
 
@@ -303,11 +324,12 @@ VITE_DRVP_COMPANY_ID=...
 
 ```bash
 # Python (run separately — conftest collision)
-.venv/bin/pytest core/tests/ -q       # 279 tests
-.venv/bin/pytest cluster/tests/ -q    # 123 tests
+.venv/bin/pytest core/tests/ -q       # 403 tests (7 skipped without langgraph)
+.venv/bin/pytest cluster/tests/ -q    # 150 tests
 
 # Frontend
 cd office && npx vitest run           # 28 tests
+# Total: 581 passing
 ```
 
 ---
@@ -340,7 +362,7 @@ The Leader Mac mini runs the full service mesh:
   </tr>
   <tr>
     <td><strong>Orchestration</strong></td>
-    <td>LangGraph, custom campaign DAG engine</td>
+    <td>LangGraph, custom campaign DAG engine, DeerFlow research harness</td>
   </tr>
   <tr>
     <td><strong>Backend</strong></td>
@@ -376,7 +398,7 @@ The Leader Mac mini runs the full service mesh:
   </tr>
   <tr>
     <td><strong>Testing</strong></td>
-    <td>pytest (402 tests), Vitest (28 tests)</td>
+    <td>pytest (491 tests), Vitest (28 tests)</td>
   </tr>
 </table>
 
@@ -384,7 +406,7 @@ The Leader Mac mini runs the full service mesh:
 
 ## Development Status
 
-All 44 planned tasks across 9 phases are **complete**.
+82 tasks across 18 phases are **complete**.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
@@ -397,6 +419,15 @@ All 44 planned tasks across 9 phases are **complete**.
 | 7. Office UX & AIClient | Campaign progress, EventTimeline, priority badges, boost tier | Done |
 | 8. Security & Integration | Browser allowlist, per-task profiles, DRVP browser events | Done |
 | 9. Finish All Tasks | Knowledge graph, deepagents, NemoClaw, E2E tests, /boost | Done |
+| 10. DeerFlow Integration | DeerFlow adapter, /deerflow command, boost tier, 27 new tests | Done |
+| 11. RL Self-Evolution | OpenClaw-RL + MiroShark debate simulation, 48 new tests | Done |
+| 12. Deep Research | Iterative research pipeline, academic search, convergence eval | Done |
+| 13. Research Expansion | 9 academic sources, knowledge base, parameter golf route | Done |
+| 14. Swarm + Wiring | /swarmresearch, Tinker training wired, MiroShark wired | Done |
+| 15. TurboQuant | KV cache compression, memory pool, Middle-Out, runtime adapter | Done |
+| 16. Qwen3 Multi-Model | Specialist routing, RL_EVOLVED+TurboQuant 12k context | Done |
+| 17. Office + Registry | Swarm registry, RLStatusPanel, TurboQuantPanel, DRVP handlers | Done |
+| 18. Research Mgmt | /results, /schedule, LLM synthesizer, Dashboard wiring | Done |
 
 ---
 

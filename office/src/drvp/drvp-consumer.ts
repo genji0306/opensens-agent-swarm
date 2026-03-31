@@ -86,6 +86,53 @@ export function dispatchDrvpEvent(event: DRVPEvent): void {
     case "request.failed":
       cleanupHandoffLinks(event.request_id);
       break;
+    // TurboQuant memory pool events
+    case "memory.pool.status":
+    case "memory.pool.eviction":
+    case "memory.compression.stats":
+      handleMemoryPoolEvent(event);
+      break;
+    // Deep Research events
+    case "deep_research.started":
+    case "deep_research.iteration":
+    case "deep_research.search":
+    case "deep_research.scored":
+    case "deep_research.completed":
+      handleDeepResearchEvent(event);
+      break;
+    // RL training events
+    case "rl.rollout.collected":
+    case "rl.training.step":
+    case "rl.checkpoint.saved":
+    case "rl.evaluation.completed":
+    case "rl.checkpoint.promoted":
+    case "rl.checkpoint.rolledback":
+      handleRLEvent(event);
+      break;
+    // Debate events
+    case "debate.started":
+    case "debate.round.completed":
+    case "debate.completed":
+    case "debate.transcript.ready":
+      handleDebateEvent(event);
+      break;
+    // Decision engine events
+    case "decision.recommended":
+    case "readiness.scored":
+    case "campaign.reflection.completed":
+    case "uncertainty.routing":
+      handleDecisionEvent(event);
+      break;
+  }
+
+  // DeerFlow sub-agent progress: update metrics when DeerFlow reports step counts
+  if (event.agent_name === "deerflow" && event.event_type === "agent.idle") {
+    const steps = event.payload.steps as number | undefined;
+    const outputLen = event.payload.output_length as number | undefined;
+    if (steps != null || outputLen != null) {
+      const store = useOfficeStore.getState();
+      store.setAgentVisualStatusByName("deerflow", "idle");
+    }
   }
 }
 
@@ -189,6 +236,171 @@ function handleCampaignApprovalRequired(_event: DRVPEvent): void {
 
 // ─── Browser events ───────────────────────────────────────────────
 // browser.navigate and browser.action are handled by DRVP_TO_VISUAL_STATUS map (→ tool_calling).
+
+// ─── TurboQuant memory pool events ───────────────────────────────
+
+function handleMemoryPoolEvent(event: DRVPEvent): void {
+  const payload = event.payload;
+
+  switch (event.event_type) {
+    case "memory.pool.eviction": {
+      // Agent evicted from memory pool — show brief error flash
+      const evictedAgent = (payload.agent_id as string) || event.agent_name;
+      useOfficeStore.getState().setAgentVisualStatusByName(evictedAgent, "error");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName(evictedAgent, "idle");
+      }, 2_000);
+      break;
+    }
+    case "memory.pool.status":
+    case "memory.compression.stats":
+      // Informational — captured in drvp-store via pushEvent
+      // Future: update a dedicated TurboQuant dashboard panel
+      break;
+  }
+}
+
+// ─── Deep Research events ────────────────────────────────────────
+
+function handleDeepResearchEvent(event: DRVPEvent): void {
+  const payload = event.payload;
+
+  switch (event.event_type) {
+    case "deep_research.started":
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+      break;
+    case "deep_research.iteration": {
+      const iteration = payload.iteration as number | undefined;
+      const total = payload.total as number | undefined;
+      if (iteration != null && total != null) {
+        useDrvpStore.getState().updateCampaignProgress(event.request_id, {
+          currentStep: iteration,
+          totalSteps: total,
+          stepTitle: `Research iteration ${iteration}`,
+        });
+      }
+      break;
+    }
+    case "deep_research.search":
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "tool_calling");
+      break;
+    case "deep_research.scored": {
+      const passed = payload.passed as boolean | undefined;
+      if (passed) {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "speaking");
+      }
+      break;
+    }
+    case "deep_research.completed":
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "idle");
+      break;
+  }
+}
+
+// ─── RL training events ──────────────────────────────────────────
+
+function handleRLEvent(event: DRVPEvent): void {
+  const payload = event.payload;
+
+  switch (event.event_type) {
+    case "rl.checkpoint.promoted":
+      // Agent just got upgraded — show brief "speaking" animation
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "speaking");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "idle");
+      }, 3_000);
+      break;
+    case "rl.checkpoint.rolledback":
+      // Agent rolled back — brief error flash then idle
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "error");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "idle");
+      }, 2_000);
+      break;
+    case "rl.training.step":
+      // Training in progress — agent shows as "thinking"
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+      break;
+    default:
+      // rl.rollout.collected, rl.checkpoint.saved, rl.evaluation.completed
+      // These are informational — just captured in drvp-store via pushEvent
+      break;
+  }
+}
+
+// ─── Debate events ──────────────────────────────────────────────
+
+function handleDebateEvent(event: DRVPEvent): void {
+  const payload = event.payload;
+
+  switch (event.event_type) {
+    case "debate.started":
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+      break;
+    case "debate.round.completed": {
+      const round = payload.round as number | undefined;
+      const totalRounds = payload.total_rounds as number | undefined;
+      if (round != null && totalRounds != null) {
+        useDrvpStore.getState().updateCampaignProgress(event.request_id, {
+          currentStep: round,
+          totalSteps: totalRounds,
+          stepTitle: `Debate round ${round}`,
+        });
+      }
+      break;
+    }
+    case "debate.completed":
+      useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "speaking");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "idle");
+      }, 3_000);
+      break;
+    case "debate.transcript.ready":
+      // Transcript ready for training — informational
+      break;
+  }
+}
+
+// ─── Browser events ───────────────────────────────────────────────
+// browser.navigate and browser.action are handled by DRVP_TO_VISUAL_STATUS map (→ tool_calling).
+
+// ─── Decision engine events ─────────────────────────────────────
+
+function handleDecisionEvent(event: DRVPEvent): void {
+  const payload = event.payload;
+
+  switch (event.event_type) {
+    case "decision.recommended": {
+      const action = payload.action as string | undefined;
+      if (action === "escalate_to_human") {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "speaking");
+      }
+      // Decision data captured in drvp-store via pushEvent for DecisionPanel
+      break;
+    }
+    case "readiness.scored": {
+      // Informational — captured in drvp-store for panels
+      break;
+    }
+    case "campaign.reflection.completed": {
+      const rec = payload.recommendation as string | undefined;
+      if (rec === "retry_with_refinement") {
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+      }
+      break;
+    }
+    case "uncertainty.routing": {
+      const shouldProceed = payload.should_proceed as boolean | undefined;
+      if (!shouldProceed) {
+        // Routing blocked — show brief thinking state
+        useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+      }
+      break;
+    }
+  }
+}
+
+// ─── Browser events ───────────────────────────────────────────────
 
 function handleBrowserBlocked(event: DRVPEvent): void {
   // Domain blocked → brief error state, then auto-recover to thinking

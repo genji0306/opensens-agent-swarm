@@ -15,6 +15,7 @@ Routing table (from SKILL.md):
   /synthetic    -> Experiment -> darklab-synthetic
   /report-data  -> Experiment -> darklab-report-data
   /autoresearch -> Experiment -> darklab-autoresearch
+  /deerflow     -> Leader     -> darklab-deerflow (local)
   /synthesize   -> Leader     -> darklab-synthesis (local)
   /report       -> Leader     -> darklab-media-gen (local)
   /notebooklm   -> Leader     -> darklab-notebooklm (local)
@@ -318,12 +319,121 @@ ROUTING_TABLE: dict[str, Route] = {
     "analyze":      Route("experiment",  "darklab-analysis",      TaskType.ANALYZE),
     "synthetic":    Route("experiment",  "darklab-synthetic",     TaskType.SYNTHETIC),
     "report-data":  Route("experiment",  "darklab-report-data",   TaskType.REPORT_DATA),
-    "autoresearch": Route("experiment",  "darklab-autoresearch",  TaskType.AUTORESEARCH),
+    "autoresearch": Route("leader",      "darklab-autoresearch",  TaskType.AUTORESEARCH),
+    "deerflow":     Route("leader",      "darklab-deerflow",      TaskType.DEERFLOW),
     # Leader
     "synthesize":   Route("leader",      "darklab-synthesis",     TaskType.SYNTHESIZE),
     "report":       Route("leader",      "darklab-media-gen",     TaskType.MEDIA_GEN),
     "notebooklm":   Route("leader",      "darklab-notebooklm",   TaskType.NOTEBOOKLM),
+    # Deep Research + Swarm Research + Parameter Golf
+    "deepresearch":  Route("leader",      "darklab-deepresearch",    TaskType.DEEP_RESEARCH),
+    "swarmresearch": Route("leader",      "darklab-deepresearch",    TaskType.SWARM_RESEARCH),
+    "parametergolf": Route("experiment",  "darklab-parameter-golf",  TaskType.PARAMETER_GOLF),
+    # RL + Debate
+    "debate":       Route("leader",      "darklab-debate",       TaskType.DEBATE),
+    "rl-train":     Route("leader",      "darklab-rl-train",     TaskType.RL_TRAIN),
+    "rl-status":    Route("leader",      "darklab-rl-train",     TaskType.RL_TRAIN),
+    "rl-rollback":  Route("leader",      "darklab-rl-train",     TaskType.RL_TRAIN),
+    "rl-freeze":    Route("leader",      "darklab-rl-train",     TaskType.RL_TRAIN),
+    # TurboQuant
+    "turboq-status":Route("leader",      "darklab-rl-train",     TaskType.TURBOQ_STATUS),
+    # Research management
+    "results":      Route("leader",      "darklab-deepresearch",  TaskType.RESULTS),
+    "schedule":     Route("leader",      "darklab-deepresearch",  TaskType.SCHEDULE),
+    # Full swarm pipeline
+    "fullswarm":    Route("leader",      "darklab-fullswarm",     TaskType.FULL_SWARM),
 }
+
+COMMAND_ALIASES: dict[str, str] = {
+    "start": "help",
+    "commands": "help",
+    "report_data": "report-data",
+    "rl_train": "rl-train",
+    "rl_status": "rl-status",
+    "rl_rollback": "rl-rollback",
+    "rl_freeze": "rl-freeze",
+    "turboq_status": "turboq-status",
+}
+
+HELP_OUTPUT = """\
+DarkLab Research Commands
+=========================
+
+Quick Start
+  /fullswarm auto <topic>  — run ALL 18 agents overnight ($0)
+  /fullswarm semi <topic>  — auto discovery, pause for review
+  /deepresearch <topic>    — iterative deep research
+  /swarmresearch <topic>   — 5-angle parallel research
+
+Research
+  /research <topic>     — literature search + gap analysis
+  /literature <query>   — deep literature review
+  /perplexity <query>   — web search (Perplexity AI)
+  /deerflow <objective> — deep multi-step research
+  /debate <topic>       — multi-agent debate
+
+Experiments
+  /doe <spec>           — design experiments
+  /simulate <params>    — run simulations
+  /analyze <data>       — analyze data
+  /synthetic <spec>     — generate synthetic data
+  /autoresearch <prog>  — autonomous ML loop
+  /parametergolf <spec> — parameter optimization
+
+Output
+  /synthesize <topic>   — combine findings
+  /report <scope>       — final report
+  /paper <topic>        — draft paper
+  /report-data <scope>  — charts and figures
+  /notebooklm <sources> — audio study guide
+
+Management
+  /fullswarm status     — list swarm runs
+  /fullswarm resume <id> — resume paused run
+  /results [N]          — recent research results
+  /schedule <topic>     — schedule recurring research
+  /boost on|off|status  — toggle free AI models
+
+System
+  /status               — cluster health
+  /rl-status            — RL training status
+  /turboq-status        — KV cache pool status
+
+Tip: /fullswarm help for full pipeline guide.
+In Telegram, use underscores for hyphens: /rl_status, /report_data
+"""
+
+
+def _normalize_command(command: str | None) -> str | None:
+    """Normalize Telegram-safe aliases to the canonical command names."""
+    if command is None:
+        return None
+    return COMMAND_ALIASES.get(command, command)
+
+
+def _build_help_result(task: Task) -> TaskResult:
+    """Return a fast local help payload with no remote calls."""
+    return TaskResult(
+        task_id=task.task_id,
+        agent_name="LeaderDispatch",
+        status="ok",
+        result={
+            "action": "help",
+            "output": HELP_OUTPUT,
+            "command_aliases": COMMAND_ALIASES,
+        },
+    )
+
+
+def _build_command_payload(payload: dict[str, Any], args: str) -> dict[str, Any]:
+    """Normalize slash-command payloads before local or remote execution."""
+    command_payload = dict(payload)
+    raw_text = command_payload.get("raw_text", command_payload.get("text", ""))
+    command_payload["raw_text"] = raw_text
+    command_payload["text"] = args
+    command_payload["args"] = args
+    command_payload["query"] = args
+    return command_payload
 
 
 def parse_command(text: str) -> tuple[str | None, str]:
@@ -331,15 +441,15 @@ def parse_command(text: str) -> tuple[str | None, str]:
 
     Returns (command_name, arguments) or (None, original_text) if no command found.
     """
-    match = re.match(r"^/(\w+)\s*(.*)", text, re.DOTALL)
+    match = re.match(r"^/([A-Za-z0-9_-]+)(?:@[A-Za-z0-9_]+)?(?:\s+(.*))?$", text, re.DOTALL)
     if match:
-        return match.group(1).lower(), match.group(2).strip()
+        return match.group(1).lower(), (match.group(2) or "").strip()
     return None, text
 
 
 def resolve_route(command: str) -> Route | None:
     """Look up the routing destination for a command."""
-    return ROUTING_TABLE.get(command)
+    return ROUTING_TABLE.get(_normalize_command(command))
 
 
 def build_node_invoke(route: Route, payload: dict) -> dict:
@@ -370,9 +480,14 @@ Available commands:
 - /synthetic <spec> - Generate synthetic datasets (Experiment)
 - /report-data <scope> - Publication-quality data visualizations (Experiment)
 - /autoresearch <program> - Autonomous ML loop (Experiment)
+- /deerflow <objective> - Deep multi-step research with sub-agents, reports, and artifacts (Leader)
 - /synthesize <topic> - Synthesize findings (Leader)
 - /report <scope> - Generate formatted report (Leader)
 - /notebooklm <sources> - Generate audio/study guide via NotebookLM (Leader)
+- /deepresearch <topic> - Iterative deep research with academic sources and convergence scoring (Leader)
+- /swarmresearch <topic> - Multi-angle parallel research with 5 specialist perspectives (Leader)
+- /debate <topic> - Generate multi-agent debate simulation via MiroShark (Leader)
+- /fullswarm auto|semi|manual <topic> - Full 18-step swarm pipeline (Leader)
 
 Output a JSON array of steps:
 [
@@ -405,6 +520,76 @@ async def plan_campaign(request: str) -> list[dict]:
         return [{"step": 1, "command": "research", "args": request, "depends_on": []}]
 
 
+_LOCAL_HANDLERS: dict[str, Any] = {}
+
+
+def _get_local_handler(command: str):
+    """Get a local handler for leader-routed commands.
+
+    Imports handlers lazily and individually to avoid pulling in heavy
+    dependencies (numpy, torch) from experiment agents.
+    Returns the async handle() function, or None if not available locally.
+    """
+    if command in _LOCAL_HANDLERS:
+        return _LOCAL_HANDLERS[command]
+
+    handler = None
+    try:
+        if command == "deerflow":
+            from experiment.deerflow_research import handle
+            handler = handle
+        elif command == "autoresearch":
+            from leader.autoresearch_cmd import handle
+            handler = handle
+        elif command == "synthesize":
+            from leader.synthesis import handle
+            handler = handle
+        elif command == "report":
+            from leader.media_gen import handle
+            handler = handle
+        elif command == "notebooklm":
+            from leader.notebooklm import handle
+            handler = handle
+        elif command == "deepresearch":
+            from leader.deep_research_cmd import handle
+            handler = handle
+        elif command == "swarmresearch":
+            from leader.swarm_research_cmd import handle
+            handler = handle
+        elif command == "debate":
+            from leader.rl_commands import handle_debate as handle
+            handler = handle
+        elif command == "rl-train":
+            from leader.rl_commands import handle_rl_train as handle
+            handler = handle
+        elif command == "rl-status":
+            from leader.rl_commands import handle_rl_status as handle
+            handler = handle
+        elif command == "rl-rollback":
+            from leader.rl_commands import handle_rl_rollback as handle
+            handler = handle
+        elif command == "rl-freeze":
+            from leader.rl_commands import handle_rl_freeze as handle
+            handler = handle
+        elif command == "turboq-status":
+            from leader.turboq_cmd import handle
+            handler = handle
+        elif command == "results":
+            from leader.research_mgmt_cmd import handle_results as handle
+            handler = handle
+        elif command == "schedule":
+            from leader.research_mgmt_cmd import handle_schedule as handle
+            handler = handle
+        elif command == "fullswarm":
+            from leader.fullswarm_cmd import handle
+            handler = handle
+    except ImportError as exc:
+        logger.debug("local_handler_import_skip", command=command, error=str(exc))
+
+    _LOCAL_HANDLERS[command] = handler
+    return handler
+
+
 def _node_url(node: str) -> str | None:
     """Resolve node name to HTTP URL if configured, else return None."""
     if node == "academic" and settings.academic_host:
@@ -414,15 +599,15 @@ def _node_url(node: str) -> str | None:
     return None
 
 
-async def _forward_to_node(url: str, task: Task, route: Route) -> dict:
+async def _forward_to_node(url: str, task: Task, route: Route, command_payload: dict[str, Any]) -> dict:
     """Forward a task to a remote node via HTTP POST."""
     import httpx
 
     payload = {
-        "text": task.payload.get("text", ""),
+        "text": command_payload.get("text", ""),
         "task_type": route.task_type.value,
         "user_id": task.user_id,
-        "payload": task.payload,
+        "payload": command_payload,
     }
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(url, json=payload)
@@ -464,23 +649,37 @@ async def _handle_boost_command(task: Task, args: str) -> TaskResult:
         router = get_model_router()
         if router:
             stats = router.stats
+            on_off = "ON" if stats["boost_enabled"] else "OFF"
+            exhausted = " (CREDITS EXHAUSTED)" if stats["credits_exhausted"] else ""
+            output = (
+                f"Boost: {on_off}{exhausted}\n"
+                f"Today: {stats['boost_today']}/{stats['boost_daily_limit']} calls\n"
+                f"Model: {stats['models']['boost']}\n"
+                f"Toggle: /boost on or /boost off"
+            )
             return TaskResult(
                 task_id=task.task_id,
                 agent_name="LeaderDispatch",
                 status="ok",
                 result={
                     "action": "boost_status",
+                    "output": output,
                     "enabled": stats["boost_enabled"],
                     "today_calls": stats["boost_today"],
                     "daily_limit": stats["boost_daily_limit"],
                     "credits_exhausted": stats["credits_exhausted"],
                 },
             )
+        enabled = getattr(settings, "boost_enabled", False)
         return TaskResult(
             task_id=task.task_id,
             agent_name="LeaderDispatch",
             status="ok",
-            result={"action": "boost_status", "enabled": settings.boost_enabled},
+            result={
+                "action": "boost_status",
+                "output": f"Boost: {'ON' if enabled else 'OFF'}\nToggle: /boost on or /boost off",
+                "enabled": enabled,
+            },
         )
 
     if action in ("on", "enable", "true", "1"):
@@ -489,7 +688,7 @@ async def _handle_boost_command(task: Task, args: str) -> TaskResult:
             task_id=task.task_id,
             agent_name="LeaderDispatch",
             status="ok",
-            result={"action": "boost_enabled", "message": "Boost tier enabled"},
+            result={"action": "boost_enabled", "output": "Boost tier ENABLED. Free AI models active for eligible tasks."},
         )
 
     if action in ("off", "disable", "false", "0"):
@@ -498,7 +697,7 @@ async def _handle_boost_command(task: Task, args: str) -> TaskResult:
             task_id=task.task_id,
             agent_name="LeaderDispatch",
             status="ok",
-            result={"action": "boost_disabled", "message": "Boost tier disabled"},
+            result={"action": "boost_disabled", "output": "Boost tier DISABLED. Using local Ollama only."},
         )
 
     return TaskResult(
@@ -518,7 +717,12 @@ async def handle(task: Task) -> TaskResult:
     - A campaign plan (for multi-step requests)
     """
     text = task.payload.get("text", "")
-    command, args = parse_command(text)
+    raw_command, args = parse_command(text)
+    command = _normalize_command(raw_command)
+
+    # Fast local Telegram-safe help path: no governance, memory, or LLM hop.
+    if command == "help":
+        return _build_help_result(task)
 
     # Pre-dispatch hook: budget check + issue creation + DRVP event
     blocked = await pre_dispatch_hook(task, text)
@@ -549,11 +753,15 @@ async def handle(task: Task) -> TaskResult:
 
     if command == "status":
         log_event("status_check", source="leader")
+        n_cmds = len(ROUTING_TABLE)
         return TaskResult(
             task_id=task.task_id,
             agent_name="LeaderDispatch",
             status="ok",
-            result={"action": "status", "message": "Cluster status requested"},
+            result={
+                "action": "status",
+                "output": f"DarkLab Cluster: OK\nCommands: {n_cmds} registered\nRole: leader\nSend /help for command list.",
+            },
         )
 
     if command == "boost":
@@ -561,13 +769,32 @@ async def handle(task: Task) -> TaskResult:
 
     if command and command in ROUTING_TABLE:
         route = ROUTING_TABLE[command]
+        command_payload = _build_command_payload(task.payload, args)
         log_event("dispatch", command=command, target_node=route.node, skill=route.skill)
+
+        # Leader-local commands: execute handler directly if registered
+        if route.node == "leader":
+            handler = _get_local_handler(command)
+            if handler:
+                try:
+                    task.payload = command_payload
+                    result = await handler(task)
+                    log_event("dispatch_local_ok", command=command)
+                    return result
+                except Exception as exc:
+                    logger.warning("local_handler_failed", command=command, error=str(exc))
+                    return TaskResult(
+                        task_id=task.task_id,
+                        agent_name="LeaderDispatch",
+                        status="error",
+                        result={"error": str(exc), "command": command},
+                    )
 
         # Try direct HTTP forwarding if node address is configured
         node_url = _node_url(route.node)
         if node_url:
             try:
-                result_data = await _forward_to_node(node_url, task, route)
+                result_data = await _forward_to_node(node_url, task, route, command_payload)
                 log_event("dispatch_http_ok", command=command, node=route.node)
                 return TaskResult(
                     task_id=task.task_id,
@@ -579,7 +806,7 @@ async def handle(task: Task) -> TaskResult:
                 logger.warning("http_forward_failed", node=route.node, error=str(e))
 
         # Fallback: return OpenClaw node.invoke instruction
-        invoke_msg = build_node_invoke(route, {"text": args, **task.payload})
+        invoke_msg = build_node_invoke(route, command_payload)
         return TaskResult(
             task_id=task.task_id,
             agent_name="LeaderDispatch",

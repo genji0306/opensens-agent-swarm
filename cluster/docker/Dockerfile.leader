@@ -1,20 +1,29 @@
-FROM python:3.11-slim AS base
+FROM python:3.13-slim AS base
 
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Install deps first (layer caching)
-COPY pyproject.toml .
-RUN uv pip install --system --no-cache -e ".[leader]"
+# Install deps (listed explicitly — pyproject.toml lacks build-system)
+RUN uv pip install --system --no-cache \
+    pydantic httpx structlog anthropic openai google-generativeai \
+    python-dotenv pynacl fastapi "uvicorn[standard]" python-docx python-pptx \
+    langchain langchain-openai langchain-anthropic langgraph \
+    langgraph-sdk langgraph-checkpoint-sqlite pyyaml tavily-python tiktoken \
+    duckduckgo-search aiohttp
 
 # Copy agent code
 COPY agents/ agents/
 
 # Create darklab home structure
-RUN mkdir -p /root/.darklab/logs /root/.darklab/artifacts /root/.darklab/keys
+RUN mkdir -p /root/.darklab/logs /root/.darklab/artifacts /root/.darklab/keys /root/.darklab/deerflow
 
-ENV PYTHONPATH=/app/agents
+# OAS core and DeerFlow harness are volume-mounted at runtime:
+#   - /app/oas_core      (from ~/darklab/oas-core/oas_core)
+#   - /app/deerflow-harness (from ~/darklab/frameworks/deer-flow-main/backend/packages/harness)
+# Install deerflow-harness at startup if mounted (see entrypoint)
+
+ENV PYTHONPATH=/app/agents:/app
 ENV DARKLAB_HOME=/root/.darklab
 ENV DARKLAB_ROLE=leader
 

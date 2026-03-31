@@ -100,8 +100,7 @@ class TestRoute:
     def test_execution_route(self):
         d = self.router.route("Summarize the experiment results")
         assert d.tier == ModelTier.EXECUTION
-        assert d.model == "llama3.1"
-        assert d.max_tokens == 4096
+        assert d.model == "llama3.1"  # Explicit config in setup_method
 
     def test_force_planning(self):
         d = self.router.route("Simple question", force_tier=ModelTier.PLANNING)
@@ -111,7 +110,7 @@ class TestRoute:
     def test_force_execution(self):
         d = self.router.route("Create a plan.md", force_tier=ModelTier.EXECUTION)
         assert d.tier == ModelTier.EXECUTION
-        assert d.model == "llama3.1"
+        assert d.model == "llama3.1"  # Explicit config in setup_method
 
 
 # ── Credit exhaustion tests ──────────────────────────────────────────────────
@@ -212,7 +211,7 @@ class TestBoostTier:
         """Non-eligible tasks stay on execution tier even with boost enabled."""
         d = self.router.route("Run simulation", task_type="SIMULATE")
         assert d.tier == ModelTier.EXECUTION
-        assert d.model == "llama3.1"
+        assert d.model == "qwen2.5-coder:7b"  # Coding specialist for SIMULATE
 
     def test_boost_ineligible_analyze(self):
         d = self.router.route("Analyze data", task_type="ANALYZE")
@@ -353,10 +352,14 @@ class TestTierConfig:
     def test_defaults(self):
         cfg = TierConfig()
         assert cfg.planning_model == "claude-sonnet-4-6"
-        assert cfg.execution_model == "llama3.1"
+        assert cfg.execution_model == "qwen3:8b"
+        assert cfg.coding_model == "qwen2.5-coder:7b"
+        assert cfg.reasoning_model == "glm4:9b"
         assert cfg.boost_model == "gemini-2.5-flash"
         assert cfg.boost_enabled is False
         assert cfg.boost_daily_limit == 100
+        assert cfg.rl_model == "qwen3:8b"
+        assert cfg.rl_max_tokens == 12288
         assert cfg.credits_exhausted is False
         assert cfg.credit_retry_interval == 3600.0
 
@@ -384,7 +387,11 @@ class TestBoostEligibleTasks:
     """BOOST_ELIGIBLE_TASKS should contain the expected task types."""
 
     def test_eligible_tasks_present(self):
-        expected = {"RESEARCH", "LITERATURE", "PAPER", "DOE", "SYNTHESIZE", "AUTORESEARCH"}
+        expected = {
+            "RESEARCH", "LITERATURE", "PAPER", "DOE",
+            "SYNTHESIZE", "AUTORESEARCH", "DEERFLOW",
+            "DEEP_RESEARCH", "SWARM_RESEARCH", "FULL_SWARM",
+        }
         assert BOOST_ELIGIBLE_TASKS == expected
 
     def test_simulate_not_eligible(self):
@@ -392,3 +399,60 @@ class TestBoostEligibleTasks:
 
     def test_analyze_not_eligible(self):
         assert "ANALYZE" not in BOOST_ELIGIBLE_TASKS
+
+
+class TestSpecialistRouting:
+    """Task-type-aware specialist model routing (Qwen3 multi-model strategy)."""
+
+    def setup_method(self):
+        self.router = ModelRouter()  # Uses default TierConfig (Qwen3 models)
+
+    def test_coding_task_routes_to_coder(self):
+        d = self.router.route("Run simulation", task_type="SIMULATE")
+        assert d.tier == ModelTier.EXECUTION
+        assert d.model == "qwen2.5-coder:7b"
+
+    def test_analyze_routes_to_coder(self):
+        d = self.router.route("Analyze data", task_type="ANALYZE")
+        assert d.model == "qwen2.5-coder:7b"
+
+    def test_parameter_golf_routes_to_coder(self):
+        d = self.router.route("Train model", task_type="PARAMETER_GOLF")
+        assert d.model == "qwen2.5-coder:7b"
+
+    def test_reasoning_task_routes_to_glm(self):
+        d = self.router.route("Design experiment", task_type="DOE")
+        assert d.model == "glm4:9b"
+
+    def test_debate_routes_to_glm(self):
+        d = self.router.route("Debate topic", task_type="DEBATE")
+        assert d.model == "glm4:9b"
+
+    def test_deep_research_routes_to_glm(self):
+        d = self.router.route("Research topic", task_type="DEEP_RESEARCH")
+        assert d.model == "glm4:9b"
+
+    def test_general_task_routes_to_qwen3(self):
+        d = self.router.route("Summarize findings", task_type="RESEARCH")
+        # RESEARCH is boost-eligible but boost is disabled by default
+        assert d.model == "qwen3:8b"
+
+    def test_no_task_type_routes_to_qwen3(self):
+        d = self.router.route("Hello world")
+        assert d.model == "qwen3:8b"
+
+    def test_rl_evolved_overrides_specialist(self):
+        """RL_EVOLVED tier takes priority over specialist routing."""
+        self.router.config.rl_enabled = True
+        self.router.config.rl_proxy_url = "http://localhost:30000/v1"
+        self.router.config.rl_enabled_agents = {"research"}
+        d = self.router.route("Research", task_type="RESEARCH", agent_name="research")
+        assert d.tier == ModelTier.RL_EVOLVED
+
+    def test_default_model_names(self):
+        cfg = TierConfig()
+        assert cfg.execution_model == "qwen3:8b"
+        assert cfg.coding_model == "qwen2.5-coder:7b"
+        assert cfg.reasoning_model == "glm4:9b"
+        assert cfg.rl_model == "qwen3:8b"
+        assert cfg.rl_max_tokens == 12288

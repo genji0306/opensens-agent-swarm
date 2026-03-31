@@ -43,6 +43,33 @@ export const DRVP_EVENT_TYPES = [
   "campaign.step.completed",
   "campaign.approval.required",
   "campaign.approved",
+  // TurboQuant memory
+  "memory.pool.status",
+  "memory.pool.eviction",
+  "memory.compression.stats",
+  // Deep Research lifecycle
+  "deep_research.started",
+  "deep_research.iteration",
+  "deep_research.search",
+  "deep_research.scored",
+  "deep_research.completed",
+  // RL training lifecycle
+  "rl.rollout.collected",
+  "rl.training.step",
+  "rl.checkpoint.saved",
+  "rl.evaluation.completed",
+  "rl.checkpoint.promoted",
+  "rl.checkpoint.rolledback",
+  // Debate lifecycle
+  "debate.started",
+  "debate.round.completed",
+  "debate.completed",
+  "debate.transcript.ready",
+  // Decision engine
+  "decision.recommended",
+  "readiness.scored",
+  "campaign.reflection.completed",
+  "uncertainty.routing",
 ] as const;
 
 export type DRVPEventType = (typeof DRVP_EVENT_TYPES)[number];

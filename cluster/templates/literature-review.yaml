@@ -1,0 +1,20 @@
+name: literature-review
+description: "Comprehensive literature review with synthesis"
+category: research
+tags: [research, literature, synthesis]
+default_config:
+  min_sources: 5
+steps:
+  - step: 1
+    command: literature
+    args_template: "{objective}"
+    device: academic
+  - step: 2
+    command: perplexity
+    args_template: "{objective} recent developments"
+    device: academic
+  - step: 3
+    command: synthesize
+    args_template: "synthesize literature review findings on {objective}"
+    depends_on: [1, 2]
+    device: leader

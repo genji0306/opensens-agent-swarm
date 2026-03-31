@@ -72,6 +72,38 @@ class DRVPEventType(str, Enum):
     CAMPAIGN_APPROVAL_REQUIRED = "campaign.approval.required"
     CAMPAIGN_APPROVED = "campaign.approved"
 
+    # RL training lifecycle
+    RL_ROLLOUT_COLLECTED = "rl.rollout.collected"
+    RL_TRAINING_STEP = "rl.training.step"
+    RL_CHECKPOINT_SAVED = "rl.checkpoint.saved"
+    RL_EVALUATION_COMPLETED = "rl.evaluation.completed"
+    RL_CHECKPOINT_PROMOTED = "rl.checkpoint.promoted"
+    RL_CHECKPOINT_ROLLED_BACK = "rl.checkpoint.rolledback"
+
+    # TurboQuant memory
+    MEMORY_POOL_STATUS = "memory.pool.status"
+    MEMORY_POOL_EVICTION = "memory.pool.eviction"
+    MEMORY_COMPRESSION_STATS = "memory.compression.stats"
+
+    # Deep Research lifecycle
+    DEEP_RESEARCH_STARTED = "deep_research.started"
+    DEEP_RESEARCH_ITERATION = "deep_research.iteration"
+    DEEP_RESEARCH_SEARCH = "deep_research.search"
+    DEEP_RESEARCH_SCORED = "deep_research.scored"
+    DEEP_RESEARCH_COMPLETED = "deep_research.completed"
+
+    # Debate lifecycle
+    DEBATE_STARTED = "debate.started"
+    DEBATE_ROUND_COMPLETED = "debate.round.completed"
+    DEBATE_COMPLETED = "debate.completed"
+    DEBATE_TRANSCRIPT_READY = "debate.transcript.ready"
+
+    # Decision engine
+    DECISION_RECOMMENDED = "decision.recommended"
+    READINESS_SCORED = "readiness.scored"
+    CAMPAIGN_REFLECTION_COMPLETED = "campaign.reflection.completed"
+    UNCERTAINTY_ROUTING = "uncertainty.routing"
+
 
 class DRVPEvent(BaseModel):
     """A single DRVP event emitted by the OAS middleware pipeline."""

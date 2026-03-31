@@ -57,6 +57,28 @@ class Settings(BaseModel):
     boost_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_BOOST_ENABLED", "").lower() in ("true", "1", "yes"))
     boost_daily_limit: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_BOOST_DAILY_LIMIT", "100")))
 
+    # RL (OpenClaw-RL + MiroShark)
+    rl_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_RL_ENABLED", "").lower() in ("true", "1", "yes"))
+    rl_enabled_agents: str = Field(default_factory=lambda: os.getenv("DARKLAB_RL_ENABLED_AGENTS", ""))
+    rl_proxy_url: str = Field(default_factory=lambda: os.getenv("DARKLAB_RL_PROXY_URL", ""))
+    rl_training_method: str = Field(default_factory=lambda: os.getenv("DARKLAB_RL_TRAINING_METHOD", "combine"))
+    rl_batch_size: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_RL_BATCH_SIZE", "16")))
+    rl_lora_rank: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_RL_LORA_RANK", "32")))
+    rl_min_promotion_score: float = Field(default_factory=lambda: float(os.getenv("DARKLAB_RL_MIN_PROMOTION_SCORE", "0.7")))
+    rl_daily_budget: float = Field(default_factory=lambda: float(os.getenv("DARKLAB_RL_DAILY_BUDGET", "10.0")))
+    tinker_api_key: str = Field(default_factory=lambda: os.getenv("DARKLAB_TINKER_API_KEY", ""))
+    miroshark_url: str = Field(default_factory=lambda: os.getenv("DARKLAB_MIROSHARK_URL", ""))
+    miroshark_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_MIROSHARK_ENABLED", "").lower() in ("true", "1", "yes"))
+    debate_default_rounds: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_DEBATE_DEFAULT_ROUNDS", "10")))
+    debate_default_agents: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_DEBATE_DEFAULT_AGENTS", "15")))
+
+    # TurboQuant KV cache compression
+    turbo_quant_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_TURBOQUANT_ENABLED", "").lower() in ("true", "1", "yes"))
+    turbo_quant_bits: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_TURBOQUANT_BITS", "4")))
+    turbo_quant_pool_mb: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_TURBOQUANT_POOL_MB", "4096")))
+    turbo_quant_enable_qjl: bool = Field(default_factory=lambda: os.getenv("DARKLAB_TURBOQUANT_QJL", "true").lower() in ("true", "1", "yes"))
+    turbo_quant_middle_out: bool = Field(default_factory=lambda: os.getenv("DARKLAB_TURBOQUANT_MIDDLE_OUT", "").lower() in ("true", "1", "yes"))
+
     # Browser security
     browser_allowed_domains: str = Field(
         default_factory=lambda: os.getenv(
@@ -88,6 +110,41 @@ class Settings(BaseModel):
 
     # Logging
     log_level: str = Field(default_factory=lambda: os.getenv("LOG_LEVEL", "INFO"))
+
+    @property
+    def rl_enabled_agent_set(self) -> set[str]:
+        """Parsed set of RL-enabled agent names."""
+        return {a.strip().lower() for a in self.rl_enabled_agents.split(",") if a.strip()}
+
+    @property
+    def rl_dir(self) -> Path:
+        d = self.darklab_home / "rl"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def rl_rollouts_dir(self) -> Path:
+        d = self.rl_dir / "rollouts"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def rl_checkpoints_dir(self) -> Path:
+        d = self.rl_dir / "checkpoints"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def rl_baselines_dir(self) -> Path:
+        d = self.rl_dir / "baselines"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def rl_evaluations_dir(self) -> Path:
+        d = self.rl_dir / "evaluations"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
 
     @property
     def browser_domain_allowlist(self) -> set[str]:

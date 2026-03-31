@@ -13,11 +13,21 @@ Task 14: Approval gates for campaigns
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
+import json
 import logging
 from typing import Any
 
 from oas_core.adapters.paperclip import PaperclipClient, PaperclipError
 from oas_core.protocols.drvp import DRVPEvent, DRVPEventType, emit
+
+try:
+    import nacl.signing  # type: ignore[import-untyped]
+
+    _NACL_AVAILABLE = True
+except ImportError:
+    _NACL_AVAILABLE = False
 
 __all__ = ["GovernanceMiddleware"]
 
@@ -259,3 +269,64 @@ class GovernanceMiddleware:
 
         logger.warning("approval_timeout: approval_id=%s", approval_id)
         return "timeout"
+
+    # --- Signed Approval Records ---
+
+    @staticmethod
+    def sign_approval(
+        approval_data: dict[str, Any],
+        signing_key_seed: bytes,
+    ) -> dict[str, Any]:
+        """Sign an approval record with Ed25519.
+
+        Returns the approval_data with ``signature`` and ``signer_public_key`` added.
+        Requires PyNaCl.
+        """
+        if not _NACL_AVAILABLE:
+            logger.warning("nacl_not_available: cannot sign approval")
+            return approval_data
+
+        signing_key = nacl.signing.SigningKey(signing_key_seed)
+        payload_bytes = json.dumps(
+            approval_data, sort_keys=True, default=str
+        ).encode()
+        signed = signing_key.sign(payload_bytes)
+
+        return {
+            **approval_data,
+            "signature": base64.b64encode(signed.signature).decode(),
+            "signer_public_key": base64.b64encode(
+                signing_key.verify_key.encode()
+            ).decode(),
+        }
+
+    @staticmethod
+    def verify_approval_signature(signed_data: dict[str, Any]) -> bool:
+        """Verify an Ed25519-signed approval record.
+
+        Returns True if valid, False if invalid or PyNaCl unavailable.
+        """
+        if not _NACL_AVAILABLE:
+            return False
+
+        signature_b64 = signed_data.get("signature")
+        pubkey_b64 = signed_data.get("signer_public_key")
+        if not signature_b64 or not pubkey_b64:
+            return False
+
+        # Reconstruct the payload without signature fields
+        payload = {
+            k: v
+            for k, v in signed_data.items()
+            if k not in ("signature", "signer_public_key")
+        }
+        payload_bytes = json.dumps(payload, sort_keys=True, default=str).encode()
+
+        try:
+            signature = base64.b64decode(signature_b64)
+            pubkey_bytes = base64.b64decode(pubkey_b64)
+            verify_key = nacl.signing.VerifyKey(pubkey_bytes)
+            verify_key.verify(payload_bytes, signature)
+            return True
+        except Exception:
+            return False

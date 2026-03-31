@@ -23,6 +23,11 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+# macOS Finder copy artifacts ("file 2.py", "folder 2/")
+*\ 2
+*\ 2.*
+*\ 3
+*\ 3.*
 
 # Environment & secrets
 .env
@@ -62,4 +67,5 @@ code-review-graph/
 # Misc
 *.log
 .mcp.json
-demo/
+.moat/
+results/

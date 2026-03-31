@@ -1,13 +1,17 @@
-"""Tiered Model Router — Anthropic for planning, Ollama for execution, AIClient for boost.
+"""Tiered Model Router — multi-model strategy with specialist routing.
 
 Protocol:
-  Tier 1 (PLANNING)   — Anthropic Claude via LiteLLM (expensive, high quality)
-                         Used for: campaign planning, CLAUDE.md, plan.md, architecture
-  Tier 2 (EXECUTION)  — Ollama llama3.1:8b via LiteLLM (free, slower)
-                         Used for: all other work (research, synthesis, media, etc.)
-  Tier 3 (BOOST)      — Claude/Gemini via AIClient-2-API (free client accounts)
-                         Used for: quality-sensitive execution when boost is enabled
-  AUTO-FALLBACK       — If Anthropic credits exhaust, PLANNING → BOOST (if enabled) → EXECUTION
+  Tier 1 (PLANNING)    — Anthropic Claude via LiteLLM (expensive, high quality)
+                          Used for: campaign planning, CLAUDE.md, plan.md, architecture
+  Tier 2 (EXECUTION)   — Qwen3:8b via Ollama/LiteLLM (free, local)
+                          General: research, synthesis, media, etc.
+                          Coding specialist: qwen2.5-coder:7b for SIMULATE/ANALYZE/SYNTHETIC
+                          Reasoning specialist: glm4:9b for DOE/DEEP_RESEARCH/DEBATE
+  Tier 3 (BOOST)       — Claude/Gemini via AIClient-2-API (free client accounts)
+                          Used for: quality-sensitive execution when boost is enabled
+  Tier 4 (RL_EVOLVED)  — Qwen3:8b + LoRA via OpenClaw-RL proxy
+                          TurboQuant 4-bit KV: ~12k tokens/agent with 10 active
+  AUTO-FALLBACK        — PLANNING → BOOST (if enabled) → EXECUTION
 
 The router classifies each LLM call by inspecting the prompt/system message for
 planning indicators, then selects the appropriate model tier. Credit exhaustion
@@ -28,6 +32,8 @@ __all__ = [
     "TierConfig",
     "RoutingDecision",
     "BOOST_ELIGIBLE_TASKS",
+    "CODING_TASKS",
+    "REASONING_TASKS",
 ]
 
 logger = logging.getLogger("oas.model_router")
@@ -64,6 +70,26 @@ BOOST_ELIGIBLE_TASKS: set[str] = {
     "DOE",
     "SYNTHESIZE",
     "AUTORESEARCH",
+    "DEERFLOW",
+    "DEEP_RESEARCH",
+    "SWARM_RESEARCH",
+    "FULL_SWARM",
+}
+
+# Task types routed to the specialist coding model (qwen2.5-coder)
+CODING_TASKS: set[str] = {
+    "SIMULATE",
+    "ANALYZE",
+    "SYNTHETIC",
+    "PARAMETER_GOLF",
+}
+
+# Task types routed to the specialist reasoning model (glm4)
+REASONING_TASKS: set[str] = {
+    "DOE",
+    "DEEP_RESEARCH",
+    "SWARM_RESEARCH",
+    "DEBATE",
 }
 
 
@@ -72,6 +98,7 @@ class ModelTier(str, Enum):
     PLANNING = "planning"
     EXECUTION = "execution"
     BOOST = "boost"
+    RL_EVOLVED = "rl_evolved"
 
 
 @dataclass
@@ -79,13 +106,26 @@ class TierConfig:
     """Model configuration for each tier."""
     planning_model: str = "claude-sonnet-4-6"
     planning_max_tokens: int = 8192
-    execution_model: str = "llama3.1"
-    execution_max_tokens: int = 4096
+    execution_model: str = "qwen3:8b"
+    execution_max_tokens: int = 8192
+    # Specialist models for task-specific routing
+    coding_model: str = "qwen2.5-coder:7b"
+    coding_max_tokens: int = 8192
+    reasoning_model: str = "glm4:9b"
+    reasoning_max_tokens: int = 8192
     # Boost tier — AIClient-2-API (free client accounts)
     boost_model: str = "gemini-2.5-flash"
     boost_max_tokens: int = 8192
     boost_enabled: bool = False
     boost_daily_limit: int = 100
+    # RL-evolved tier — OpenClaw-RL trained LoRA adapters via proxy
+    # TurboQuant 4-bit KV compression: ~12k tokens/agent with 10 active agents
+    rl_proxy_url: str = ""  # e.g. "http://localhost:30000/v1"
+    rl_model: str = "qwen3:8b"
+    rl_max_tokens: int = 12288  # TurboQuant extended context
+    rl_enabled: bool = False
+    rl_enabled_agents: set[str] = field(default_factory=set)
+    rl_min_promotion_score: float = 0.7
     # Anthropic credit exhaustion triggers auto-fallback
     credits_exhausted: bool = False
     credits_exhausted_at: float = 0.0
@@ -124,7 +164,7 @@ class ModelRouter:
     def __init__(self, config: TierConfig | None = None):
         self.config = config or TierConfig()
         self._call_counts: dict[str, int] = {
-            "planning": 0, "execution": 0, "boost": 0,
+            "planning": 0, "execution": 0, "boost": 0, "rl_evolved": 0,
         }
         self._boost_today_count: int = 0
         self._boost_today_date: str = ""
@@ -162,6 +202,17 @@ class ModelRouter:
             self._boost_today_count = 0
         self._boost_today_count += 1
 
+    def is_rl_available(self, agent_name: str | None = None) -> bool:
+        """Check if RL-evolved model is available for the given agent."""
+        cfg = self.config
+        if not cfg.rl_enabled or not cfg.rl_proxy_url:
+            return False
+        if agent_name and cfg.rl_enabled_agents:
+            return agent_name.lower() in {a.lower() for a in cfg.rl_enabled_agents}
+        # If rl_enabled_agents is empty and rl_enabled is True, RL is disabled
+        # (empty set means no agents opted in yet)
+        return bool(cfg.rl_enabled_agents)
+
     def route(
         self,
         prompt: str,
@@ -169,6 +220,7 @@ class ModelRouter:
         *,
         force_tier: ModelTier | None = None,
         task_type: str | None = None,
+        agent_name: str | None = None,
     ) -> RoutingDecision:
         """Determine which model to use for this request.
 
@@ -177,6 +229,7 @@ class ModelRouter:
             system: The system message (if any).
             force_tier: Override automatic classification.
             task_type: DarkLab TaskType (e.g. "RESEARCH") for boost eligibility.
+            agent_name: Agent name for RL-evolved routing.
 
         Returns:
             RoutingDecision with model name, tier, and reasoning.
@@ -193,9 +246,11 @@ class ModelRouter:
                 cfg.credits_exhausted = False
                 cfg.credits_exhausted_at = 0.0
 
-        # Handle forced tier
+        # Handle forced tiers
         if force_tier == ModelTier.BOOST:
             return self._route_boost("Forced boost tier")
+        if force_tier == ModelTier.RL_EVOLVED:
+            return self._route_rl(agent_name, "Forced RL_EVOLVED tier")
 
         tier = force_tier or self.classify(prompt, system)
 
@@ -223,7 +278,14 @@ class ModelRouter:
                 reason="Planning task detected — using Anthropic",
             )
 
-        # EXECUTION tier — check if boost is eligible and enabled
+        # EXECUTION tier — check RL_EVOLVED first (highest priority for eligible agents)
+        if self.is_rl_available(agent_name):
+            return self._route_rl(
+                agent_name,
+                f"RL-evolved model available for {agent_name}",
+            )
+
+        # Check if boost is eligible and enabled
         if (
             cfg.boost_enabled
             and task_type
@@ -234,13 +296,47 @@ class ModelRouter:
                 f"Boost eligible task ({task_type}) — using AIClient",
             )
 
-        # Default EXECUTION tier — always use Ollama (free)
+        # EXECUTION tier — route to specialist model if task type matches
+        task_upper = task_type.upper() if task_type else ""
+
+        if task_upper in CODING_TASKS and cfg.coding_model:
+            self._call_counts["execution"] = self._call_counts.get("execution", 0) + 1
+            return RoutingDecision(
+                tier=ModelTier.EXECUTION,
+                model=cfg.coding_model,
+                max_tokens=cfg.coding_max_tokens,
+                reason=f"Coding task ({task_type}) — using {cfg.coding_model}",
+            )
+
+        if task_upper in REASONING_TASKS and cfg.reasoning_model:
+            self._call_counts["execution"] = self._call_counts.get("execution", 0) + 1
+            return RoutingDecision(
+                tier=ModelTier.EXECUTION,
+                model=cfg.reasoning_model,
+                max_tokens=cfg.reasoning_max_tokens,
+                reason=f"Reasoning task ({task_type}) — using {cfg.reasoning_model}",
+            )
+
+        # Default EXECUTION — general-purpose model (Qwen3:8b)
         self._call_counts["execution"] = self._call_counts.get("execution", 0) + 1
         return RoutingDecision(
             tier=ModelTier.EXECUTION,
             model=cfg.execution_model,
             max_tokens=cfg.execution_max_tokens,
-            reason="Execution task — using Ollama (free)",
+            reason=f"Execution task — using {cfg.execution_model}",
+        )
+
+    def _route_rl(self, agent_name: str | None, reason: str) -> RoutingDecision:
+        """Create an RL_EVOLVED routing decision."""
+        self._call_counts["rl_evolved"] = self._call_counts.get("rl_evolved", 0) + 1
+        model = self.config.rl_model
+        if agent_name:
+            model = f"{model}:{agent_name}-lora"
+        return RoutingDecision(
+            tier=ModelTier.RL_EVOLVED,
+            model=model,
+            max_tokens=self.config.rl_max_tokens,
+            reason=reason,
         )
 
     def _route_boost(self, reason: str) -> RoutingDecision:
@@ -255,11 +351,12 @@ class ModelRouter:
         )
 
     def mark_credits_exhausted(self) -> None:
-        """Mark Anthropic credits as exhausted. All calls route to Ollama."""
+        """Mark Anthropic credits as exhausted. All calls route to Qwen3."""
         self.config.credits_exhausted = True
         self.config.credits_exhausted_at = time.time()
         logger.warning(
-            "Anthropic credits exhausted — all calls routed to Ollama"
+            "Anthropic credits exhausted — all calls routed to %s",
+            self.config.execution_model,
         )
 
     def mark_credits_available(self) -> None:
@@ -272,11 +369,22 @@ class ModelRouter:
     def stats(self) -> dict[str, Any]:
         """Return routing statistics."""
         return {
+            "models": {
+                "planning": self.config.planning_model,
+                "execution": self.config.execution_model,
+                "coding": self.config.coding_model,
+                "reasoning": self.config.reasoning_model,
+                "boost": self.config.boost_model,
+                "rl": self.config.rl_model,
+            },
             "planning_calls": self._call_counts.get("planning", 0),
             "execution_calls": self._call_counts.get("execution", 0),
             "boost_calls": self._call_counts.get("boost", 0),
+            "rl_evolved_calls": self._call_counts.get("rl_evolved", 0),
             "boost_today": self._boost_today_count,
             "boost_daily_limit": self.config.boost_daily_limit,
             "boost_enabled": self.config.boost_enabled,
+            "rl_enabled": self.config.rl_enabled,
+            "rl_enabled_agents": sorted(self.config.rl_enabled_agents),
             "credits_exhausted": self.config.credits_exhausted,
         }

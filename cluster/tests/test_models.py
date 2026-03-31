@@ -10,7 +10,13 @@ class TestTaskType:
         expected = {
             "research", "literature", "doe", "paper", "perplexity",
             "simulate", "analyze", "synthetic", "report_data", "autoresearch",
-            "plan", "synthesize", "media_gen", "notebooklm", "status",
+            "deerflow",
+            "plan", "synthesize", "media_gen", "notebooklm",
+            "debate", "rl_train",
+            "deep_research", "parameter_golf", "swarm_research",
+            "turboq_status",
+            "results", "schedule", "full_swarm",
+            "status",
         }
         actual = {t.value for t in TaskType}
         assert actual == expected

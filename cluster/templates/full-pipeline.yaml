@@ -1,0 +1,41 @@
+name: full-pipeline
+description: "End-to-end research pipeline: literature → simulation → analysis → report"
+category: research
+tags: [research, simulation, analysis, report, full]
+default_config:
+  min_sources: 5
+  max_parallel: 2
+steps:
+  - step: 1
+    command: literature
+    args_template: "{objective}"
+    device: academic
+  - step: 2
+    command: research
+    args_template: "{objective}"
+    device: academic
+  - step: 3
+    command: doe
+    args_template: "design experiment for {objective}"
+    depends_on: [1, 2]
+    device: academic
+  - step: 4
+    command: simulate
+    args_template: "simulate {objective}"
+    depends_on: [3]
+    device: experiment
+  - step: 5
+    command: analyze
+    args_template: "analyze results for {objective}"
+    depends_on: [4]
+    device: experiment
+  - step: 6
+    command: synthesize
+    args_template: "synthesize all findings on {objective}"
+    depends_on: [1, 2, 5]
+    device: leader
+  - step: 7
+    command: report
+    args_template: "generate report on {objective}"
+    depends_on: [6]
+    device: leader
