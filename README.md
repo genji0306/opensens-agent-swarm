@@ -49,6 +49,14 @@ Every request &mdash; from a Telegram command to a multi-step research campaign 
   </tr>
 </table>
 
+### TurboMOQ: Hybrid KV-Cache Compression
+
+<p align="center">
+  <img src="docs/assets/turbomoq-infographic.png" alt="TurboMOQ: Hybrid KV-Cache Compression for Long-Context Local AI" width="960" />
+</p>
+
+<p align="center"><em>13.7x context expansion on Mac Mini M4 16GB — from 55K to 752K tokens per agent via split K/V strategy with progressive temporal tiering</em></p>
+
 ---
 
 ## Architecture
