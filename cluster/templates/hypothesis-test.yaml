@@ -1,0 +1,26 @@
+name: hypothesis-test
+description: "Research → simulation → analysis pipeline for hypothesis testing"
+category: research
+tags: [research, simulation, analysis]
+default_config:
+  min_sources: 3
+steps:
+  - step: 1
+    command: research
+    args_template: "{objective}"
+    device: academic
+  - step: 2
+    command: doe
+    args_template: "design experiment for {objective}"
+    depends_on: [1]
+    device: academic
+  - step: 3
+    command: simulate
+    args_template: "simulate {objective}"
+    depends_on: [2]
+    device: experiment
+  - step: 4
+    command: analyze
+    args_template: "analyze simulation results for {objective}"
+    depends_on: [3]
+    device: experiment

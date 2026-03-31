@@ -23,12 +23,26 @@ class TaskType(str, Enum):
     SYNTHETIC = "synthetic"
     REPORT_DATA = "report_data"
     AUTORESEARCH = "autoresearch"
+    DEERFLOW = "deerflow"
 
     # Leader tasks
     PLAN = "plan"
     SYNTHESIZE = "synthesize"
     MEDIA_GEN = "media_gen"
     NOTEBOOKLM = "notebooklm"
+
+    # RL + Debate
+    DEBATE = "debate"
+    RL_TRAIN = "rl_train"
+
+    # Deep Research
+    DEEP_RESEARCH = "deep_research"
+    PARAMETER_GOLF = "parameter_golf"
+    SWARM_RESEARCH = "swarm_research"
+    TURBOQ_STATUS = "turboq_status"
+    RESULTS = "results"
+    SCHEDULE = "schedule"
+    FULL_SWARM = "full_swarm"
 
     # System
     STATUS = "status"

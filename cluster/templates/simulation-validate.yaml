@@ -1,0 +1,26 @@
+name: simulation-validate
+description: "Simulation with parameter golf optimization and validation"
+category: simulation
+tags: [simulation, parametergolf, analysis]
+default_config:
+  max_iterations: 3
+steps:
+  - step: 1
+    command: research
+    args_template: "{objective}"
+    device: academic
+  - step: 2
+    command: parametergolf
+    args_template: "optimize parameters for {objective}"
+    depends_on: [1]
+    device: experiment
+  - step: 3
+    command: simulate
+    args_template: "simulate {objective} with optimized parameters"
+    depends_on: [2]
+    device: experiment
+  - step: 4
+    command: analyze
+    args_template: "validate simulation results for {objective}"
+    depends_on: [3]
+    device: experiment

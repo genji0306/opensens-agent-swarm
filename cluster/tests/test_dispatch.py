@@ -29,6 +29,16 @@ class TestParseCommand:
         assert cmd == "simulate"
         assert "x=1" in args
 
+    def test_hyphenated_command(self):
+        cmd, args = parse_command("/report-data figures for report")
+        assert cmd == "report-data"
+        assert args == "figures for report"
+
+    def test_bot_mention_command(self):
+        cmd, args = parse_command("/help@darklab_bot")
+        assert cmd == "help"
+        assert args == ""
+
     def test_case_insensitive(self):
         cmd, args = parse_command("/RESEARCH topic")
         assert cmd == "research"
@@ -49,6 +59,12 @@ class TestResolveRoute:
 
     def test_unknown_command(self):
         assert resolve_route("nonexistent") is None
+
+    def test_telegram_alias_resolves(self):
+        route = resolve_route("report_data")
+        assert route is not None
+        assert route.node == "experiment"
+        assert route.skill == "darklab-report-data"
 
     def test_research_routes_to_academic(self):
         route = resolve_route("research")

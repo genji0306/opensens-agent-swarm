@@ -161,4 +161,90 @@ def get_agent_registry() -> dict:
     except ImportError:
         pass
 
+    # DeerFlow is optional (requires deerflow-harness package)
+    try:
+        from experiment.deerflow_research import handle as deerflow_handle
+        registry["deerflow"] = {
+            "handler": deerflow_handle,
+            "task_type": "deerflow",
+            "device": "leader",
+            "description": (
+                "Deep multi-step research powered by DeerFlow. Spawns sub-agents "
+                "for literature review, data analysis, and report generation. "
+                "Best for complex research objectives requiring planning, "
+                "multiple sources, and rich artifact output (reports, slides, web pages)."
+            ),
+        }
+    except ImportError:
+        pass
+
+    # Deep Research — iterative pipeline with academic source search
+    try:
+        from leader.deep_research_cmd import handle as deep_research_handle
+        registry["deepresearch"] = {
+            "handler": deep_research_handle,
+            "task_type": "deep_research",
+            "device": "leader",
+            "description": (
+                "Iterative deep research with convergence evaluation. Searches "
+                "7 academic databases (arXiv, Semantic Scholar, bioRxiv, PubMed, "
+                "OpenAlex, CrossRef, EuropePMC), synthesizes findings, and refines "
+                "through multiple iterations until quality threshold is met."
+            ),
+        }
+    except ImportError:
+        pass
+
+    # Swarm Research — multi-perspective parallel research
+    try:
+        from leader.swarm_research_cmd import handle as swarm_research_handle
+        registry["swarmresearch"] = {
+            "handler": swarm_research_handle,
+            "task_type": "swarm_research",
+            "device": "leader",
+            "description": (
+                "Multi-angle research with 5 specialist perspectives: foundations, "
+                "state of the art, novel pathways, computational methods, and "
+                "practical applications. Each perspective runs independent deep "
+                "research, results are synthesized into a unified report."
+            ),
+        }
+    except ImportError:
+        pass
+
+    # Debate — MiroShark multi-agent simulation
+    try:
+        from leader.rl_commands import handle_debate as debate_handle
+        registry["debate"] = {
+            "handler": debate_handle,
+            "task_type": "debate",
+            "device": "leader",
+            "description": (
+                "Multi-agent debate simulation via MiroShark. Generates structured "
+                "scientific debates with AI agents holding diverse viewpoints "
+                "(peer-review, hypothesis, methodology, literature-dispute, "
+                "cross-domain, budget). Produces transcripts for RL training."
+            ),
+        }
+    except ImportError:
+        pass
+
+    # Full Swarm — end-to-end 18-step research pipeline
+    try:
+        from leader.fullswarm_cmd import handle as fullswarm_handle
+        registry["fullswarm"] = {
+            "handler": fullswarm_handle,
+            "task_type": "full_swarm",
+            "device": "leader",
+            "description": (
+                "Full 18-step swarm research pipeline across 6 phases: "
+                "discovery, deep analysis, experimentation, optimization, "
+                "deliverables, and audio. Three modes: auto (overnight, fully "
+                "autonomous), semi (pauses after analysis for review), manual "
+                "(shows plan, requires approval). Prioritizes local LLM ($0 cost)."
+            ),
+        }
+    except ImportError:
+        pass
+
     return registry

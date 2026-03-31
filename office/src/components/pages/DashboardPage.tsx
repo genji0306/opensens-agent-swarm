@@ -8,6 +8,10 @@ import { SkillOverview } from "@/components/console/dashboard/SkillOverview";
 import { StatCard } from "@/components/console/dashboard/StatCard";
 import { ErrorState } from "@/components/console/shared/ErrorState";
 import { LoadingState } from "@/components/console/shared/LoadingState";
+import { ClusterStatusPanel } from "@/components/panels/ClusterStatusPanel";
+import { DecisionPanel } from "@/components/panels/DecisionPanel";
+import { RLStatusPanel } from "@/components/panels/RLStatusPanel";
+import { TurboQuantPanel } from "@/components/panels/TurboQuantPanel";
 import { useDashboardStore } from "@/store/console-stores/dashboard-store";
 import { useOfficeStore } from "@/store/office-store";
 
@@ -123,6 +127,13 @@ export function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <ChannelOverview channels={channelsSummary} />
         <SkillOverview skills={skillsSummary} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <ClusterStatusPanel />
+        <DecisionPanel />
+        <RLStatusPanel />
+        <TurboQuantPanel />
       </div>
     </div>
   );

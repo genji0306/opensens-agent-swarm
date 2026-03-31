@@ -21,7 +21,11 @@ class TestRoutingTableCompleteness:
         "darklab-research", "darklab-literature", "darklab-doe", "darklab-paper",
         "darklab-perplexity", "darklab-simulation", "darklab-analysis",
         "darklab-synthetic", "darklab-report-data", "darklab-autoresearch",
+        "darklab-deerflow",
         "darklab-synthesis", "darklab-media-gen", "darklab-notebooklm",
+        "darklab-deepresearch", "darklab-parameter-golf",
+        "darklab-debate", "darklab-rl-train",
+        "darklab-fullswarm",
     }
 
     def test_all_skills_routable(self):
@@ -29,7 +33,7 @@ class TestRoutingTableCompleteness:
         assert routed_skills == self.EXPECTED_SKILLS
 
     def test_route_count(self):
-        assert len(ROUTING_TABLE) == 13
+        assert len(ROUTING_TABLE) == 26
 
     def test_all_routes_have_valid_nodes(self):
         valid_nodes = {"academic", "experiment", "leader"}
@@ -73,6 +77,15 @@ class TestDispatchHandler:
         assert result.result["action"] == "status"
 
     @pytest.mark.asyncio
+    async def test_help_command_returns_fast_local_response(self):
+        task = Task(task_type=TaskType.STATUS, payload={"text": "/help"})
+        with patch("leader.dispatch.log_event"):
+            result = await handle(task)
+        assert result.status == "ok"
+        assert result.result["action"] == "help"
+        assert "/research <topic>" in result.result["output"]
+
+    @pytest.mark.asyncio
     async def test_known_command_dispatches(self):
         task = Task(task_type=TaskType.RESEARCH, payload={"text": "/research MnO2 sensors"})
         with patch("leader.dispatch.log_event"):
@@ -85,7 +98,8 @@ class TestDispatchHandler:
         invoke = result.result["node_invoke"]
         assert invoke["node"] == "darklab-academic"
         assert invoke["command"] == "darklab-research"
-        assert "MnO2 sensors" in invoke["payload"]["text"]
+        assert invoke["payload"]["text"] == "MnO2 sensors"
+        assert invoke["payload"]["raw_text"] == "/research MnO2 sensors"
 
     @pytest.mark.asyncio
     async def test_perplexity_command_dispatches(self):
@@ -97,6 +111,16 @@ class TestDispatchHandler:
         assert result.result["route"]["skill"] == "darklab-perplexity"
 
     @pytest.mark.asyncio
+    async def test_telegram_alias_dispatches(self):
+        task = Task(task_type=TaskType.REPORT_DATA, payload={"text": "/report_data charts"})
+        with patch("leader.dispatch.log_event"):
+            result = await handle(task)
+        assert result.status == "ok"
+        assert result.result["action"] == "dispatch"
+        assert result.result["route"]["skill"] == "darklab-report-data"
+        assert result.result["node_invoke"]["payload"]["text"] == "charts"
+
+    @pytest.mark.asyncio
     async def test_unknown_command_triggers_campaign_plan(self):
         task = Task(task_type=TaskType.PLAN, payload={"text": "Investigate MnO2 nanoparticles for EIT sensors"})
         mock_plan = [
@@ -105,6 +129,8 @@ class TestDispatchHandler:
         ]
         with patch("leader.dispatch.call_routed", new_callable=AsyncMock, return_value=json.dumps(mock_plan)), \
              patch("leader.dispatch.call_anthropic", new_callable=AsyncMock, return_value=json.dumps(mock_plan)), \
+             patch("leader.dispatch._get_governance", return_value=None), \
+             patch("leader.dispatch._get_campaign_engine", return_value=None), \
              patch("leader.dispatch.log_event"):
             result = await handle(task)
         assert result.status == "ok"
@@ -117,6 +143,8 @@ class TestDispatchHandler:
         task = Task(task_type=TaskType.PLAN, payload={"text": "Do something complex"})
         with patch("leader.dispatch.call_routed", new_callable=AsyncMock, return_value="not valid json"), \
              patch("leader.dispatch.call_anthropic", new_callable=AsyncMock, return_value="not valid json"), \
+             patch("leader.dispatch._get_governance", return_value=None), \
+             patch("leader.dispatch._get_campaign_engine", return_value=None), \
              patch("leader.dispatch.log_event"):
             result = await handle(task)
         assert result.status == "ok"
