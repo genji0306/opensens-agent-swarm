@@ -9,10 +9,44 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
 import traceback
 
-import structlog
+try:
+    import structlog
+except ImportError:  # pragma: no cover - exercised in minimal test envs
+    class _StructlogCompatLogger:
+        def __init__(self, name: str):
+            self._logger = logging.getLogger(name)
+
+        def _log(self, level: int, event: str, **kwargs):
+            if kwargs:
+                self._logger.log(level, "%s %s", event, kwargs)
+            else:
+                self._logger.log(level, event)
+
+        def debug(self, event: str, **kwargs):
+            self._log(logging.DEBUG, event, **kwargs)
+
+        def info(self, event: str, **kwargs):
+            self._log(logging.INFO, event, **kwargs)
+
+        def warning(self, event: str, **kwargs):
+            self._log(logging.WARNING, event, **kwargs)
+
+        def error(self, event: str, **kwargs):
+            self._log(logging.ERROR, event, **kwargs)
+
+        def exception(self, event: str, **kwargs):
+            self._logger.exception("%s %s", event, kwargs if kwargs else "")
+
+    class _StructlogCompat:
+        @staticmethod
+        def get_logger(name: str) -> _StructlogCompatLogger:
+            return _StructlogCompatLogger(name)
+
+    structlog = _StructlogCompat()  # type: ignore[assignment]
 
 from shared.models import Task, TaskResult
 from shared.audit import log_task, log_result

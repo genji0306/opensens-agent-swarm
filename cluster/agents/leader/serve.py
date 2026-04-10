@@ -14,17 +14,59 @@ import asyncio
 import json
 import time
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any
 
 import os
 
 import httpx
-import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel, Field
+
+try:
+    import structlog
+except ImportError:  # pragma: no cover - exercised in minimal test envs
+    class _StructlogCompatLogger:
+        def __init__(self, name: str):
+            import logging
+
+            self._logger = logging.getLogger(name)
+
+        def _log(self, level: int, event: str, **kwargs: Any) -> None:
+            if kwargs:
+                self._logger.log(level, "%s %s", event, kwargs)
+            else:
+                self._logger.log(level, event)
+
+        def debug(self, event: str, **kwargs: Any) -> None:
+            import logging
+
+            self._log(logging.DEBUG, event, **kwargs)
+
+        def info(self, event: str, **kwargs: Any) -> None:
+            import logging
+
+            self._log(logging.INFO, event, **kwargs)
+
+        def warning(self, event: str, **kwargs: Any) -> None:
+            import logging
+
+            self._log(logging.WARNING, event, **kwargs)
+
+        def error(self, event: str, **kwargs: Any) -> None:
+            import logging
+
+            self._log(logging.ERROR, event, **kwargs)
+
+    class _StructlogCompat:
+        @staticmethod
+        def get_logger(name: str) -> _StructlogCompatLogger:
+            return _StructlogCompatLogger(name)
+
+    structlog = _StructlogCompat()  # type: ignore[assignment]
 
 __all__ = ["app", "main"]
 
@@ -32,12 +74,29 @@ from shared.models import Task, TaskType, TaskResult
 from shared.audit import log_task, log_result, log_event
 from shared.logging_setup import setup_logging, request_id_var
 from leader.dispatch import handle as dispatch_handle, parse_command, ROUTING_TABLE
-from leader.synthesis import handle as synthesis_handle
-from leader.media_gen import handle as media_gen_handle
 
 logger = structlog.get_logger("darklab.serve")
 
-app = FastAPI(title="DarkLab Leader", version="2.2.0")
+
+@asynccontextmanager
+async def _app_lifespan(_app: FastAPI):
+    try:
+        try:
+            await _get_plan_watcher_service().start()
+        except Exception as exc:
+            logger.error("plan_watcher_start_failed", error=str(exc))
+        yield
+    finally:
+        service = _plan_watcher_service
+        if service is None:
+            return
+        try:
+            await service.stop()
+        except Exception as exc:
+            logger.error("plan_watcher_stop_failed", error=str(exc))
+
+
+app = FastAPI(title="DarkLab Leader", version="2.2.0", lifespan=_app_lifespan)
 
 # --- API key authentication ---
 
@@ -45,6 +104,19 @@ _API_KEY = os.environ.get("DARKLAB_API_KEY", "")
 
 # Endpoints that do not require authentication
 _PUBLIC_PATHS = {"/health"}
+_plan_watcher_service: Any = None
+
+
+def _get_synthesis_handle():
+    from leader.synthesis import handle
+
+    return handle
+
+
+def _get_media_gen_handle():
+    from leader.media_gen import handle
+
+    return handle
 
 
 @app.middleware("http")
@@ -110,6 +182,7 @@ class HealthResponse(BaseModel):
     commands: list[str] = []
     services: list[ServiceHealth] = []
     swarm_available: bool = False
+    plan_watcher: dict[str, Any] = Field(default_factory=dict)
 
 
 async def _check_service(name: str, url: str, timeout: float = 5.0) -> ServiceHealth:
@@ -158,11 +231,17 @@ async def health() -> HealthResponse:
     except ImportError:
         swarm_ok = False
 
+    try:
+        plan_watcher = _get_plan_watcher_service().status()
+    except Exception as exc:
+        plan_watcher = {"status": "error", "error": str(exc)}
+
     return HealthResponse(
         status=overall,
         commands=sorted(ROUTING_TABLE.keys()),
         services=services,
         swarm_available=swarm_ok,
+        plan_watcher=plan_watcher,
     )
 
 
@@ -265,7 +344,7 @@ async def synthesize(req: WebhookRequest) -> dict:
     task = _build_task(req, TaskType.SYNTHESIZE)
     log_task(task)
 
-    result = await synthesis_handle(task)
+    result = await _get_synthesis_handle()(task)
     log_result(result)
 
     response = result.model_dump(mode="json")
@@ -280,7 +359,7 @@ async def media_gen(req: WebhookRequest) -> dict:
     task = _build_task(req, TaskType.MEDIA_GEN)
     log_task(task)
 
-    result = await media_gen_handle(task)
+    result = await _get_media_gen_handle()(task)
     log_result(result)
 
     response = result.model_dump(mode="json")
@@ -315,9 +394,9 @@ async def generic_task(req: WebhookRequest) -> dict:
     log_task(task)
 
     if tt == TaskType.SYNTHESIZE:
-        result = await synthesis_handle(task)
+        result = await _get_synthesis_handle()(task)
     elif tt == TaskType.MEDIA_GEN:
-        result = await media_gen_handle(task)
+        result = await _get_media_gen_handle()(task)
     else:
         result = await dispatch_handle(task)
 
@@ -326,6 +405,25 @@ async def generic_task(req: WebhookRequest) -> dict:
     if req.reply_url:
         await _reply(req.reply_url, response)
     return response
+
+
+@app.get("/plans/status")
+async def plans_status() -> dict[str, Any]:
+    """Get current plan watcher service status."""
+    return _get_plan_watcher_service().status()
+
+
+@app.post("/plans/scan")
+async def plans_scan() -> dict[str, Any]:
+    """Run one immediate plan directory scan."""
+    result = await _get_plan_watcher_service().scan_once()
+    log_event(
+        "plan_watcher_manual_scan",
+        processed_count=result["processed_count"],
+        skipped_count=result["skipped_count"],
+        error_count=result["error_count"],
+    )
+    return result
 
 
 # --- Cluster config endpoints ---
@@ -385,6 +483,23 @@ async def browser_config() -> dict:
 
 
 # --- Helpers ---
+
+def _get_plan_watcher_service():
+    """Get or lazily initialize the plan watcher service singleton."""
+    global _plan_watcher_service
+    if _plan_watcher_service is not None:
+        return _plan_watcher_service
+
+    from shared.config import settings
+    from leader.plan_watcher_service import PlanWatcherService
+
+    _plan_watcher_service = PlanWatcherService(
+        plan_dir=settings.darklab_plan_dir,
+        data_dir=settings.data_dir,
+        enabled=settings.darklab_plan_watcher_enabled,
+        interval_seconds=settings.darklab_plan_watcher_interval_seconds,
+    )
+    return _plan_watcher_service
 
 def _build_task(req: WebhookRequest, task_type: TaskType) -> Task:
     """Convert a webhook request into a Task."""

@@ -104,6 +104,48 @@ class DRVPEventType(str, Enum):
     CAMPAIGN_REFLECTION_COMPLETED = "campaign.reflection.completed"
     UNCERTAINTY_ROUTING = "uncertainty.routing"
 
+    # Campaign orchestration (open-multi-agent patterns)
+    CAMPAIGN_STEP_RETRYING = "campaign.step.retrying"
+    CAMPAIGN_STEP_CASCADE_FAILED = "campaign.step.cascade_failed"
+    CAMPAIGN_STEP_ROUTED = "campaign.step.routed"
+
+    # Plan-file orchestrator (OAS v2 Phase 24)
+    PLAN_DETECTED = "plan.detected"
+    PLAN_PARSED = "plan.parsed"
+    PLAN_ERROR = "plan.error"
+    ORCHESTRATOR_STARTED = "orchestrator.started"
+    ORCHESTRATOR_STEP_DISPATCHED = "orchestrator.step_dispatched"
+    ORCHESTRATOR_COMPLETED = "orchestrator.completed"
+    ORCHESTRATOR_FAILED = "orchestrator.failed"
+
+    # KAIROS ambient daemon (OAS v2 Phase 24)
+    KAIROS_STARTED = "kairos.started"
+    KAIROS_STOPPED = "kairos.stopped"
+    KAIROS_HEARTBEAT = "kairos.heartbeat"
+    KAIROS_HEARTBEAT_TICK = "kairos.heartbeat.tick"
+    KAIROS_BLOCKED = "kairos.blocked"
+    KAIROS_AUTODREAM_STARTED = "kairos.autodream.started"
+    KAIROS_AUTODREAM_COMPLETED = "kairos.autodream.completed"
+    KAIROS_PROACTIVE_SUGGESTION = "kairos.proactive.suggestion"
+    KAIROS_PROACTIVE_SUGGESTED = "kairos.proactive.suggested"
+    KAIROS_ROLLOUT_CURATED = "kairos.rollout.curated"
+
+    # Research router (OAS v2 Phase 24)
+    RESEARCH_ROUTER_MODE_CHOSEN = "research.router.mode_chosen"
+    RESEARCH_BACKEND_STARTED = "research.backend.started"
+    RESEARCH_BACKEND_COMPLETED = "research.backend.completed"
+    RESEARCH_BACKEND_FAILED = "research.backend.failed"
+    RESEARCH_SYNTHESIS_STARTED = "research.synthesis.started"
+    RESEARCH_SYNTHESIS_COMPLETED = "research.synthesis.completed"
+
+    # Compute pool / borrowing (OAS v2 Phase 24)
+    COMPUTE_BORROW_REQUESTED = "compute.borrow.requested"
+    COMPUTE_BORROW_ACCEPTED = "compute.borrow.accepted"
+    COMPUTE_BORROW_REJECTED = "compute.borrow.rejected"
+    COMPUTE_BORROW_COMPLETED = "compute.borrow.completed"
+    COMPUTE_CAPABILITY_PUBLISHED = "compute.capability.published"
+    COMPUTE_PRIORITY_FLOOR_CHANGED = "compute.priority_floor.changed"
+
 
 class DRVPEvent(BaseModel):
     """A single DRVP event emitted by the OAS middleware pipeline."""

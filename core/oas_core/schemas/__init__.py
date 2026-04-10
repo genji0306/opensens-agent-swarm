@@ -16,6 +16,16 @@ from oas_core.schemas.intents import (
     ComputeReceipt,
 )
 from oas_core.schemas.registry import SchemaRegistry, get_registry
+from oas_core.schemas.team import (
+    TeamManifestSchema,
+    TeamWorkerSchema,
+    TeamTaskSchema,
+    TeamEventSchema,
+    TeamTaskStatus,
+    TeamWorkerState,
+    WorkerBackend,
+    TeamEventType,
+)
 
 __all__ = [
     "CampaignSchema",
@@ -29,6 +39,14 @@ __all__ = [
     "RunRecord",
     "ComputeRequest",
     "ComputeReceipt",
+    "TeamManifestSchema",
+    "TeamWorkerSchema",
+    "TeamTaskSchema",
+    "TeamEventSchema",
+    "TeamTaskStatus",
+    "TeamWorkerState",
+    "WorkerBackend",
+    "TeamEventType",
     "SchemaRegistry",
     "get_registry",
 ]

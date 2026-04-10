@@ -11,7 +11,10 @@ import logging
 import sys
 from contextvars import ContextVar
 
-import structlog
+try:
+    import structlog
+except ImportError:  # pragma: no cover - exercised in minimal test envs
+    structlog = None  # type: ignore[assignment]
 
 # Context variable for request-scoped tracing
 request_id_var: ContextVar[str | None] = ContextVar("request_id", default=None)
@@ -61,6 +64,17 @@ def setup_logging(*, json_output: bool = True, level: str | None = None) -> None
             level = "INFO"
 
     log_level = getattr(logging, level.upper(), logging.INFO)
+
+    if structlog is None:
+        logging.basicConfig(
+            level=log_level,
+            stream=sys.stderr,
+            format="%(asctime)s %(levelname)s %(name)s %(message)s",
+            force=True,
+        )
+        for name in ("httpx", "httpcore", "uvicorn.access"):
+            logging.getLogger(name).setLevel(logging.WARNING)
+        return
 
     if json_output:
         renderer = structlog.processors.JSONRenderer()

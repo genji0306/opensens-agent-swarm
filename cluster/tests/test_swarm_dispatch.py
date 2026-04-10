@@ -97,7 +97,9 @@ class TestSwarmDispatch:
         mock_plan = [{"step": 1, "command": "research", "args": "polymers", "depends_on": []}]
 
         with patch("leader.dispatch.get_swarm_app", new_callable=AsyncMock, return_value=None):
-            with patch("leader.dispatch.plan_campaign", new_callable=AsyncMock, return_value=mock_plan):
+            with patch("leader.dispatch.plan_campaign", new_callable=AsyncMock, return_value=mock_plan), \
+                 patch("leader.dispatch._get_campaign_engine", return_value=None), \
+                 patch("leader.dispatch._get_governance", return_value=None):
                 result = await handle(task)
 
         assert result.result["action"] == "campaign"
@@ -119,7 +121,9 @@ class TestSwarmDispatch:
 
         with patch("leader.dispatch.get_swarm_app", new_callable=AsyncMock, return_value=mock_swarm):
             with patch("leader.dispatch._dispatch_via_swarm", new_callable=AsyncMock, side_effect=RuntimeError("LLM timeout")):
-                with patch("leader.dispatch.plan_campaign", new_callable=AsyncMock, return_value=mock_plan):
+                with patch("leader.dispatch.plan_campaign", new_callable=AsyncMock, return_value=mock_plan), \
+                     patch("leader.dispatch._get_campaign_engine", return_value=None), \
+                     patch("leader.dispatch._get_governance", return_value=None):
                     result = await handle(task)
 
         assert result.result["action"] == "campaign"
@@ -351,3 +355,5 @@ class TestHealthSwarmField:
         resp = HealthResponse()
         assert hasattr(resp, "swarm_available")
         assert resp.swarm_available is False
+        assert hasattr(resp, "plan_watcher")
+        assert resp.plan_watcher == {}

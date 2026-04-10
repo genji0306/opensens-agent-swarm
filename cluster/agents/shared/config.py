@@ -72,6 +72,15 @@ class Settings(BaseModel):
     debate_default_rounds: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_DEBATE_DEFAULT_ROUNDS", "10")))
     debate_default_agents: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_DEBATE_DEFAULT_AGENTS", "15")))
 
+    # ProRL sidecar (NVIDIA NeMo ProRL-Agent-Server)
+    prorl_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_ENABLED", "").lower() in ("true", "1", "yes"))
+    prorl_url: str = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_URL", ""))
+    prorl_llm_server: str = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_LLM_SERVER", ""))
+    prorl_model: str = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_MODEL", "hosted_vllm/Qwen2.5-Coder-7B-Instruct"))
+    prorl_api_key: str = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_API_KEY", ""))
+    prorl_timeout: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_PRORL_TIMEOUT", "600")))
+    prorl_default_data_source: str = Field(default_factory=lambda: os.getenv("DARKLAB_PRORL_DEFAULT_DATA_SOURCE", "darklab_task"))
+
     # TurboQuant KV cache compression
     turbo_quant_enabled: bool = Field(default_factory=lambda: os.getenv("DARKLAB_TURBOQUANT_ENABLED", "").lower() in ("true", "1", "yes"))
     turbo_quant_bits: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_TURBOQUANT_BITS", "4")))
@@ -96,6 +105,37 @@ class Settings(BaseModel):
     academic_port: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_ACADEMIC_PORT", "8200")))
     experiment_host: str = Field(default_factory=lambda: os.getenv("DARKLAB_EXPERIMENT_HOST", ""))
     experiment_port: int = Field(default_factory=lambda: int(os.getenv("DARKLAB_EXPERIMENT_PORT", "8300")))
+
+    # Hybrid swarm plan-file + local orchestration
+    darklab_plan_dir: Path = Field(
+        default_factory=lambda: Path(
+            os.getenv("DARKLAB_PLAN_DIR", str(Path.home() / "darklab" / "plans"))
+        )
+    )
+    darklab_plan_watcher_enabled: bool = Field(
+        default_factory=lambda: os.getenv("DARKLAB_PLAN_WATCHER_ENABLED", "").lower() in ("true", "1", "yes")
+    )
+    darklab_plan_watcher_interval_seconds: float = Field(
+        default_factory=lambda: float(os.getenv("DARKLAB_PLAN_WATCHER_INTERVAL_SECONDS", "5.0"))
+    )
+    darklab_kairos_enabled: bool = Field(
+        default_factory=lambda: os.getenv("DARKLAB_KAIROS_ENABLED", "").lower() in ("true", "1", "yes")
+    )
+    darklab_kairos_idle_budget_pct: float = Field(
+        default_factory=lambda: float(os.getenv("DARKLAB_KAIROS_IDLE_BUDGET_PCT", "0.2"))
+    )
+    darklab_gemma_pool_size: int = Field(
+        default_factory=lambda: int(os.getenv("DARKLAB_GEMMA_POOL_SIZE", "3"))
+    )
+    darklab_uniscientist_enabled: bool = Field(
+        default_factory=lambda: os.getenv("DARKLAB_UNISCIENTIST_ENABLED", "").lower() in ("true", "1", "yes")
+    )
+    darklab_labclaw_enabled: bool = Field(
+        default_factory=lambda: os.getenv("DARKLAB_LABCLAW_ENABLED", "").lower() in ("true", "1", "yes")
+    )
+    darklab_internagent_enabled: bool = Field(
+        default_factory=lambda: os.getenv("DARKLAB_INTERNAGENT_ENABLED", "").lower() in ("true", "1", "yes")
+    )
 
     # Paths
     darklab_home: Path = Field(default_factory=lambda: Path(os.getenv("DARKLAB_HOME", str(Path.home() / ".darklab"))))

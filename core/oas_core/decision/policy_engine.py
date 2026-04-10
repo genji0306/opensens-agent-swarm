@@ -21,6 +21,9 @@ __all__ = [
     "DecisionRecommendation",
     "PolicyRule",
     "PolicyViolation",
+    "IdleBudgetRule",
+    "OpusGateRule",
+    "SonnetBudgetRule",
 ]
 
 logger = logging.getLogger("oas.decision.policy")
@@ -35,6 +38,9 @@ class DecisionAction(str, Enum):
     STOP_INSUFFICIENT_EVIDENCE = "stop_insufficient_evidence"
     RETRY_WITH_REFINEMENT = "retry_with_refinement"
     PROCEED_TO_NEXT_STEP = "proceed_to_next_step"
+    # v2 Phase 24 — cloud escalation actions
+    REQUIRE_HUMAN_APPROVAL = "require_human_approval"
+    BLOCK_BUDGET_EXHAUSTED = "block_budget_exhausted"
 
 
 @dataclass
@@ -204,6 +210,151 @@ class HumanEscalationRule(PolicyRule):
                 rule_name=self.name,
                 severity=self.severity,
                 message=f"Campaign cost ${total_cost:.2f} approaching escalation threshold",
+            )
+        return None
+
+
+class IdleBudgetRule(PolicyRule):
+    """Blocks background work when the idle budget cap has been exceeded."""
+
+    def __init__(self, max_idle_spend_ratio: float = 0.2):
+        super().__init__("idle_budget", severity="block")
+        self._max_ratio = max_idle_spend_ratio
+
+    def evaluate(
+        self,
+        campaign: CampaignSchema,
+        artifacts: list[KnowledgeArtifact],
+        context: dict[str, Any],
+    ) -> PolicyViolation | None:
+        scope = str(context.get("action_scope", "")).strip().lower()
+        if scope not in {"idle", "kairos", "background", "proactive"}:
+            return None
+
+        ratio = context.get("daily_spend_ratio")
+        if ratio is None:
+            spent = context.get("daily_spend_usd")
+            budget = context.get("daily_budget_usd")
+            if budget:
+                try:
+                    ratio = float(spent or 0.0) / float(budget)
+                except (TypeError, ValueError, ZeroDivisionError):
+                    ratio = None
+
+        if ratio is None:
+            return None
+
+        try:
+            ratio_value = float(ratio)
+        except (TypeError, ValueError):
+            return None
+
+        if ratio_value > self._max_ratio:
+            return PolicyViolation(
+                rule_name=self.name,
+                severity=self.severity,
+                message=(
+                    f"Idle work blocked: daily spend {ratio_value:.0%} "
+                    f"exceeds idle cap {self._max_ratio:.0%}"
+                ),
+            )
+        return None
+
+
+class OpusGateRule(PolicyRule):
+    """Per-call Boss approval for every CLAUDE_OPUS request (§4.1).
+
+    Any request that would use ``CLAUDE_OPUS`` must pass through the OAS
+    approval queue. This rule blocks unconditionally — there is no
+    timeout-grant, no bypass.
+
+    Disabling this rule itself requires Boss approval plus a 24-hour
+    cooldown (enforced by the ``OpusGate.disable()`` admin flow, not by
+    this rule object).
+    """
+
+    def __init__(self) -> None:
+        super().__init__("opus_gate", severity="block")
+
+    def evaluate(
+        self,
+        campaign: CampaignSchema,
+        artifacts: list[KnowledgeArtifact],
+        context: dict[str, Any],
+    ) -> PolicyViolation | None:
+        tier = context.get("requested_tier", "")
+        if tier not in ("claude_opus", "CLAUDE_OPUS"):
+            return None
+
+        # Check if Boss already approved this specific call
+        approved_request_ids: set[str] = set(
+            context.get("approved_opus_request_ids", [])
+        )
+        current_request_id = context.get("request_id", "")
+        if current_request_id and current_request_id in approved_request_ids:
+            return None
+
+        return PolicyViolation(
+            rule_name=self.name,
+            severity=self.severity,
+            message=(
+                "CLAUDE_OPUS requires per-call Boss approval. "
+                f"Request '{current_request_id}' must be approved via "
+                "OAS approval queue before execution."
+            ),
+        )
+
+
+class SonnetBudgetRule(PolicyRule):
+    """Per-mission Sonnet spend cap (§4.1).
+
+    Enforces ``plan_file.sonnet_cap_usd`` as a hard ceiling for
+    automatic Sonnet escalation. When the cap is reached the mission
+    must either degrade to local or request Opus (which requires Boss
+    approval via ``OpusGateRule``).
+
+    Budget tracking is cumulative per mission, not per call.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("sonnet_budget", severity="block")
+
+    def evaluate(
+        self,
+        campaign: CampaignSchema,
+        artifacts: list[KnowledgeArtifact],
+        context: dict[str, Any],
+    ) -> PolicyViolation | None:
+        tier = context.get("requested_tier", "")
+        if tier not in ("claude_sonnet", "CLAUDE_SONNET"):
+            return None
+
+        cap = context.get("sonnet_cap_usd")
+        spent = context.get("sonnet_spent_usd")
+        if cap is None or spent is None:
+            return None
+
+        try:
+            cap_f = float(cap)
+            spent_f = float(spent)
+        except (TypeError, ValueError):
+            return None
+
+        if cap_f <= 0:
+            return PolicyViolation(
+                rule_name=self.name,
+                severity=self.severity,
+                message="Sonnet cap is $0 — mission is local-only",
+            )
+
+        if spent_f >= cap_f:
+            return PolicyViolation(
+                rule_name=self.name,
+                severity=self.severity,
+                message=(
+                    f"Sonnet budget exhausted: ${spent_f:.2f} spent "
+                    f"of ${cap_f:.2f} cap"
+                ),
             )
         return None
 
