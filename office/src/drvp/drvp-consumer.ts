@@ -123,6 +123,44 @@ export function dispatchDrvpEvent(event: DRVPEvent): void {
     case "uncertainty.routing":
       handleDecisionEvent(event);
       break;
+    // Plan-file orchestrator (v2)
+    case "plan.detected":
+    case "plan.parsed":
+    case "plan.error":
+      handlePlanEvent(event);
+      break;
+    case "orchestrator.started":
+    case "orchestrator.step_dispatched":
+    case "orchestrator.completed":
+    case "orchestrator.failed":
+      handleOrchestratorEvent(event);
+      break;
+    // KAIROS ambient daemon (v2)
+    case "kairos.heartbeat":
+    case "kairos.blocked":
+    case "kairos.autodream.started":
+    case "kairos.autodream.completed":
+    case "kairos.proactive.suggestion":
+    case "kairos.rollout.curated":
+      handleKairosEvent(event);
+      break;
+    // Compute pool / borrowing (v2)
+    case "compute.borrow.requested":
+    case "compute.borrow.accepted":
+    case "compute.borrow.rejected":
+    case "compute.borrow.completed":
+    case "compute.capability.published":
+    case "compute.priority_floor.changed":
+      handleComputePoolEvent(event);
+      break;
+    // Research router (v2)
+    case "research.backend.started":
+    case "research.backend.completed":
+    case "research.backend.failed":
+    case "research.synthesis.started":
+    case "research.synthesis.completed":
+      handleResearchRouterEvent(event);
+      break;
   }
 
   // DeerFlow sub-agent progress: update metrics when DeerFlow reports step counts
@@ -397,6 +435,90 @@ function handleDecisionEvent(event: DRVPEvent): void {
       }
       break;
     }
+  }
+}
+
+// ─── Plan-file events (v2) ──────────────────────────────────────
+
+function handlePlanEvent(event: DRVPEvent): void {
+  // Plan detection/parsing events are informational — captured in drvp-store
+  // via pushEvent for the OrchestratorPanel. No agent visual status changes.
+  if (event.event_type === "plan.error") {
+    // Parse errors are notable — the OrchestratorPanel reads these from the
+    // event buffer and shows an alert icon next to the queued plan.
+    useOfficeStore.getState().setAgentVisualStatusByName("leader", "error");
+    setTimeout(() => {
+      useOfficeStore.getState().setAgentVisualStatusByName("leader", "idle");
+    }, 3_000);
+  }
+}
+
+// ─── Orchestrator events (v2) ───────────────────────────────────
+
+function handleOrchestratorEvent(event: DRVPEvent): void {
+  switch (event.event_type) {
+    case "orchestrator.started":
+      useOfficeStore.getState().setAgentVisualStatusByName("leader", "thinking");
+      break;
+    case "orchestrator.step_dispatched": {
+      // When a step is dispatched to a target device/agent, mark that agent as thinking
+      const target = (event.payload.target as string) || (event.payload.device as string);
+      if (target) {
+        useOfficeStore.getState().setAgentVisualStatusByName(target, "thinking");
+      }
+      break;
+    }
+    case "orchestrator.completed":
+      useOfficeStore.getState().setAgentVisualStatusByName("leader", "speaking");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName("leader", "idle");
+      }, 3_000);
+      break;
+    case "orchestrator.failed":
+      useOfficeStore.getState().setAgentVisualStatusByName("leader", "error");
+      setTimeout(() => {
+        useOfficeStore.getState().setAgentVisualStatusByName("leader", "idle");
+      }, 5_000);
+      break;
+  }
+}
+
+// ─── KAIROS events (v2) ─────────────────────────────────────────
+
+function handleKairosEvent(event: DRVPEvent): void {
+  // KAIROS events are informational — they update the KairosPanel via
+  // the drvp-store buffer. No visual status changes needed since KAIROS
+  // is a background daemon, not a visible agent.
+  if (event.event_type === "kairos.blocked") {
+    // When KAIROS is budget-blocked, it's a notable housekeeping event.
+    // The KairosPanel reads this from the event buffer directly.
+    useDrvpStore.getState().pushEvent(event);
+  }
+}
+
+// ─── Compute pool events (v2) ───────────────────────────────────
+
+function handleComputePoolEvent(event: DRVPEvent): void {
+  // Compute events feed the ComputePoolPanel via the drvp-store buffer.
+  // Priority floor changes are worth tracking for routing visualization.
+  if (event.event_type === "compute.borrow.rejected") {
+    // Rejection may indicate DEV overload — briefly mark the requesting
+    // agent as "thinking" (fallback in progress).
+    useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+  }
+}
+
+// ─── Research router events (v2) ────────────────────────────────
+
+function handleResearchRouterEvent(event: DRVPEvent): void {
+  if (event.event_type === "research.backend.started") {
+    useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "thinking");
+  }
+  if (event.event_type === "research.backend.completed") {
+    useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "idle");
+  }
+  if (event.event_type === "research.backend.failed") {
+    useOfficeStore.getState().setAgentVisualStatusByName(event.agent_name, "error");
   }
 }
 

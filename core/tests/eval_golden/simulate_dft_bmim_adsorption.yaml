@@ -1,0 +1,19 @@
+task_id: simulate_dft_bmim_adsorption
+task_type: SIMULATE
+description: "DFT simulation of BMIM cation adsorption on gold surface"
+input: "Perform DFT calculation of BMIM cation adsorption geometry and binding energy on Au(111) surface using PBE functional with D3 dispersion correction"
+ground_truth:
+  key_points:
+    - "adsorption energy"
+    - "geometry optimization"
+    - "charge transfer"
+    - "dispersion correction"
+  verified_facts:
+    - "PBE-D3 captures van der Waals interactions for ionic liquid adsorption"
+    - "BMIM cation lies flat on Au(111) through the imidazolium ring"
+    - "adsorption energy is in the range of -0.5 to -1.5 eV with dispersion"
+  expected_sources:
+    - "VASP"
+    - "DFT"
+    - "adsorption"
+  expected_cost_usd: 0.0

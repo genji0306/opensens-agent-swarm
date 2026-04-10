@@ -45,7 +45,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["agents"]
+pythonpath = ["agents", "../core"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 

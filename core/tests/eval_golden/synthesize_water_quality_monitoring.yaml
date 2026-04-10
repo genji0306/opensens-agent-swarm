@@ -1,0 +1,20 @@
+task_id: synthesize_water_quality_monitoring
+task_type: SYNTHESIZE
+description: "Synthesize approaches for real-time water quality monitoring with EIT"
+input: "Synthesize research on real-time water quality monitoring using EIT: ion detection, microbial contamination, and heavy metal sensing"
+ground_truth:
+  key_points:
+    - "ion concentration"
+    - "microbial detection"
+    - "heavy metals"
+    - "real-time monitoring"
+    - "limit of detection"
+  verified_facts:
+    - "EIT can detect conductivity changes from 0.1 mS/cm in aqueous media"
+    - "functionalized electrodes enable selective heavy metal detection"
+    - "biofilm formation alters local impedance signature"
+  expected_sources:
+    - "water quality"
+    - "impedance"
+    - "monitoring"
+  expected_cost_usd: 0.02

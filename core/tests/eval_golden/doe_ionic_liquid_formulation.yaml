@@ -1,0 +1,20 @@
+task_id: doe_ionic_liquid_formulation
+task_type: DOE
+description: "Design of experiments for ionic liquid electrolyte formulation"
+input: "Design a mixture DOE for binary ionic liquid electrolytes: BMIM-BF4 and EMIM-TFSI at 5 mole fractions, measuring conductivity, viscosity, and electrochemical window at 25°C and 60°C"
+ground_truth:
+  key_points:
+    - "mixture design"
+    - "temperature effect"
+    - "conductivity"
+    - "viscosity"
+    - "response optimization"
+  verified_facts:
+    - "binary ionic liquid mixtures can show non-ideal conductivity behavior"
+    - "Scheffe simplex lattice design is appropriate for mixture experiments"
+    - "viscosity and conductivity are inversely correlated via Walden plot"
+  expected_sources:
+    - "mixture"
+    - "ionic liquid"
+    - "design"
+  expected_cost_usd: 0.0

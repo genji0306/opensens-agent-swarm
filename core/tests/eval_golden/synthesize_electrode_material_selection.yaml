@@ -1,0 +1,16 @@
+task_id: synthesize_electrode_material_selection
+task_type: SYNTHESIZE
+description: "Synthesize electrode material selection criteria for wearable EIT"
+input: "Produce a decision matrix for selecting electrode materials for 7-day wearable EIT patches"
+ground_truth:
+  key_points:
+    - "Criteria: biocompatibility, skin impedance, motion artifact, hydration"
+    - "Ag/AgCl hydrogel best for signal but dries out beyond 24h"
+    - "PEDOT:PSS on textile allows multi-day wear with moderate impedance"
+    - "CNT and graphene composites balance conductivity and flexibility"
+  verified_facts:
+    - "ISO 10993-10 governs skin irritation testing for wearables"
+  expected_sources:
+    - "iso.org"
+    - "pubmed.ncbi.nlm.nih.gov"
+  expected_cost_usd: 0.50

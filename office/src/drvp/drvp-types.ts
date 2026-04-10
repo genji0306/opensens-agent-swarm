@@ -70,6 +70,38 @@ export const DRVP_EVENT_TYPES = [
   "readiness.scored",
   "campaign.reflection.completed",
   "uncertainty.routing",
+  // Campaign orchestration
+  "campaign.step.retrying",
+  "campaign.step.cascade_failed",
+  "campaign.step.routed",
+  // Plan-file orchestrator (v2 Phase 24)
+  "plan.detected",
+  "plan.parsed",
+  "plan.error",
+  "orchestrator.started",
+  "orchestrator.step_dispatched",
+  "orchestrator.completed",
+  "orchestrator.failed",
+  // KAIROS ambient daemon (v2 Phase 24)
+  "kairos.heartbeat",
+  "kairos.blocked",
+  "kairos.autodream.started",
+  "kairos.autodream.completed",
+  "kairos.proactive.suggestion",
+  "kairos.rollout.curated",
+  // Research router (v2 Phase 24)
+  "research.backend.started",
+  "research.backend.completed",
+  "research.backend.failed",
+  "research.synthesis.started",
+  "research.synthesis.completed",
+  // Compute pool / borrowing (v2 Phase 24)
+  "compute.borrow.requested",
+  "compute.borrow.accepted",
+  "compute.borrow.rejected",
+  "compute.borrow.completed",
+  "compute.capability.published",
+  "compute.priority_floor.changed",
 ] as const;
 
 export type DRVPEventType = (typeof DRVP_EVENT_TYPES)[number];

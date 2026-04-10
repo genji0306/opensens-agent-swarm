@@ -1,0 +1,19 @@
+task_id: research_graphene_oxide_membranes
+task_type: RESEARCH
+description: "Research graphene oxide membrane fabrication for water quality sensing"
+input: "Investigate graphene oxide membrane fabrication techniques and ion transport properties for water quality EIT monitoring"
+ground_truth:
+  key_points:
+    - "interlayer spacing"
+    - "ion selectivity"
+    - "fabrication method"
+    - "water permeation"
+  verified_facts:
+    - "graphene oxide interlayer spacing is approximately 0.8 nm in dry state"
+    - "vacuum filtration produces uniform GO membranes"
+    - "GO membranes exhibit cation selectivity in aqueous solutions"
+  expected_sources:
+    - "10.1038"
+    - "graphene oxide"
+    - "membrane"
+  expected_cost_usd: 0.0

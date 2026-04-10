@@ -104,6 +104,93 @@ class DRVPEventType(str, Enum):
     CAMPAIGN_REFLECTION_COMPLETED = "campaign.reflection.completed"
     UNCERTAINTY_ROUTING = "uncertainty.routing"
 
+    # Campaign orchestration (open-multi-agent patterns)
+    CAMPAIGN_STEP_RETRYING = "campaign.step.retrying"
+    CAMPAIGN_STEP_CASCADE_FAILED = "campaign.step.cascade_failed"
+    CAMPAIGN_STEP_ROUTED = "campaign.step.routed"
+
+    # Plan-file orchestrator (OAS v2 Phase 24)
+    PLAN_DETECTED = "plan.detected"
+    PLAN_PARSED = "plan.parsed"
+    PLAN_ERROR = "plan.error"
+    ORCHESTRATOR_STARTED = "orchestrator.started"
+    ORCHESTRATOR_STEP_DISPATCHED = "orchestrator.step_dispatched"
+    ORCHESTRATOR_COMPLETED = "orchestrator.completed"
+    ORCHESTRATOR_FAILED = "orchestrator.failed"
+
+    # KAIROS ambient daemon (OAS v2 Phase 24)
+    KAIROS_STARTED = "kairos.started"
+    KAIROS_STOPPED = "kairos.stopped"
+    KAIROS_HEARTBEAT = "kairos.heartbeat"
+    KAIROS_HEARTBEAT_TICK = "kairos.heartbeat.tick"
+    KAIROS_BLOCKED = "kairos.blocked"
+    KAIROS_AUTODREAM_STARTED = "kairos.autodream.started"
+    KAIROS_AUTODREAM_COMPLETED = "kairos.autodream.completed"
+    KAIROS_PROACTIVE_SUGGESTION = "kairos.proactive.suggestion"
+    KAIROS_PROACTIVE_SUGGESTED = "kairos.proactive.suggested"
+    KAIROS_ROLLOUT_CURATED = "kairos.rollout.curated"
+
+    # Research router (OAS v2 Phase 24)
+    RESEARCH_ROUTER_MODE_CHOSEN = "research.router.mode_chosen"
+    RESEARCH_BACKEND_STARTED = "research.backend.started"
+    RESEARCH_BACKEND_COMPLETED = "research.backend.completed"
+    RESEARCH_BACKEND_FAILED = "research.backend.failed"
+    RESEARCH_SYNTHESIS_STARTED = "research.synthesis.started"
+    RESEARCH_SYNTHESIS_COMPLETED = "research.synthesis.completed"
+
+    # Compute pool / borrowing (OAS v2 Phase 24)
+    COMPUTE_BORROW_REQUESTED = "compute.borrow.requested"
+    COMPUTE_BORROW_ACCEPTED = "compute.borrow.accepted"
+    COMPUTE_BORROW_REJECTED = "compute.borrow.rejected"
+    COMPUTE_BORROW_COMPLETED = "compute.borrow.completed"
+    COMPUTE_CAPABILITY_PUBLISHED = "compute.capability.published"
+    COMPUTE_PRIORITY_FLOOR_CHANGED = "compute.priority_floor.changed"
+
+    # Promotion pipeline (OAS v2 Phase 25)
+    PROMOTION_PIPELINE_STARTED = "promotion.pipeline.started"
+    PROMOTION_GATE_PASSED = "promotion.gate.passed"
+    PROMOTION_GATE_FAILED = "promotion.gate.failed"
+    PROMOTION_PIPELINE_PASSED = "promotion.pipeline.passed"
+    PROMOTION_PIPELINE_FAILED = "promotion.pipeline.failed"
+
+    # Shadow runs (OAS v2 Phase 25)
+    SHADOW_RUN_STARTED = "shadow.run.started"
+    SHADOW_RUN_SAMPLE = "shadow.run.sample"
+    SHADOW_RUN_PASSED = "shadow.run.passed"
+    SHADOW_RUN_FAILED = "shadow.run.failed"
+
+    # Auto-rollback (OAS v2 Phase 25)
+    ROLLBACK_MONITORING_STARTED = "rollback.monitoring.started"
+    ROLLBACK_TRIGGERED = "rollback.triggered"
+    ROLLBACK_EXECUTED = "rollback.executed"
+    ROLLBACK_STABLE = "rollback.stable"
+
+    # Benchmark (OAS v2 Phase 25)
+    BENCHMARK_FROZEN = "benchmark.frozen"
+    BENCHMARK_UPDATE_REQUESTED = "benchmark.update.requested"
+
+    # WebAuthn (OAS v2 Phase 25)
+    WEBAUTHN_DEVICE_ENROLLED = "webauthn.device.enrolled"
+    WEBAUTHN_DEVICE_REVOKED = "webauthn.device.revoked"
+    WEBAUTHN_AUTH_SUCCESS = "webauthn.auth.success"
+    WEBAUTHN_AUTH_FAILED = "webauthn.auth.failed"
+
+    # Opus tuning (OAS v2 Phase 25)
+    OPUS_TUNING_REPORT_GENERATED = "opus.tuning.report_generated"
+    OPUS_TUNING_RECOMMENDATION = "opus.tuning.recommendation"
+
+    # Knowledge system (Phase 25)
+    KNOWLEDGE_INGESTED = "knowledge.ingested"
+    KNOWLEDGE_CONFLICT_DETECTED = "knowledge.conflict.detected"
+    KNOWLEDGE_CONFLICT_AUTO_RESOLVED = "knowledge.conflict.auto_resolved"
+    KNOWLEDGE_PAGE_COMPILED = "knowledge.page.compiled"
+    WIKI_LINT_COMPLETED = "wiki.lint.completed"
+    WIKI_SYNC_COMPLETED = "wiki.sync.completed"
+
+    # Eval system (Phase 25)
+    EVAL_RUN_COMPLETED = "eval.run.completed"
+    EVAL_REGRESSION_DETECTED = "eval.regression.detected"
+
 
 class DRVPEvent(BaseModel):
     """A single DRVP event emitted by the OAS middleware pipeline."""

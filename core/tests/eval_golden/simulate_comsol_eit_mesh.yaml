@@ -1,0 +1,15 @@
+task_id: simulate_comsol_eit_mesh
+task_type: SIMULATE
+description: "COMSOL forward model mesh study for thoracic EIT"
+input: "Run a mesh-convergence study for a 16-electrode thoracic EIT forward model in COMSOL"
+ground_truth:
+  key_points:
+    - "Tetrahedral mesh below 2 mm near electrodes gives < 1% voltage change"
+    - "Complete electrode model (CEM) is required at contact patches"
+    - "Conductivity assigned per tissue segment from the ITIS database"
+  verified_facts:
+    - "Lungs inspiration conductivity around 0.09 S/m at 100 kHz"
+  expected_sources:
+    - "comsol.com"
+    - "itis.swiss"
+  expected_cost_usd: 0.30

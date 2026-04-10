@@ -43,6 +43,24 @@ class TaskType(str, Enum):
     RESULTS = "results"
     SCHEDULE = "schedule"
     FULL_SWARM = "full_swarm"
+    TURBO_SWARM = "turbo_swarm"
+    PAPER_REVIEW = "paper_review"
+    DFT = "dft"
+    ANE_RESEARCH = "ane_research"
+    GEMMA_SWARM = "gemma_swarm"
+    UNIPAT_SWARM = "unipat_swarm"
+
+    # Orchestrator (v2 Phase 24)
+    ORCHESTRATE = "orchestrate"
+
+    # KAIROS daemon (v2 Phase 24)
+    KAIROS = "kairos"
+
+    # Knowledge wiki + eval (Phase 25)
+    WIKI_COMPILE = "wiki_compile"
+    WIKI_LINT = "wiki_lint"
+    EVAL_RUN = "eval_run"
+    EVAL_REPORT = "eval_report"
 
     # System
     STATUS = "status"

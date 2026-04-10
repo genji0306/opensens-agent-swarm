@@ -116,3 +116,19 @@ class TestUncertaintyRouter:
             context={"budget_remaining_usd": 20.0},
         )
         assert decision.target_module == "leader"
+
+    def test_campaign_metadata_overrides_threshold(self):
+        router = UncertaintyRouter(readiness_threshold=0.9)
+        campaign = _make_campaign(metadata={"readiness_threshold": 0.1})
+        artifacts = [_make_artifact(confidence=0.9)]
+        health = {"academic": ModuleHealth(status=ModuleStatus.HEALTHY)}
+
+        decision = router.evaluate(
+            command="research",
+            campaign=campaign,
+            artifacts=artifacts,
+            module_health=health,
+            context={"budget_remaining_usd": 20.0},
+        )
+
+        assert decision.should_proceed is True

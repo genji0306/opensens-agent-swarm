@@ -1,0 +1,13 @@
+task_id: analyze_calibration_drift_regression
+task_type: ANALYZE
+description: "Regression analysis of sensor calibration drift over 30 days"
+input: "Analyze 30-day calibration drift data from 10 EIT sensors and produce a drift model"
+ground_truth:
+  key_points:
+    - "Linear drift dominates first week, then log-time behaviour"
+    - "Temperature coefficient accounts for majority of day-to-day variance"
+    - "Sensor-to-sensor variance requires per-unit calibration offsets"
+  verified_facts:
+    - "Drift reporting should include both bias and scale terms"
+  expected_sources: []
+  expected_cost_usd: 0.20

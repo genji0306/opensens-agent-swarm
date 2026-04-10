@@ -1,0 +1,14 @@
+task_id: simulate_finite_element_skin_impedance
+task_type: SIMULATE
+description: "FEM simulation of skin-electrode impedance"
+input: "Build a 2D axisymmetric FEM of a dry gel electrode on stratum corneum from 1 Hz to 1 MHz"
+ground_truth:
+  key_points:
+    - "Stratum corneum dominates low-frequency impedance"
+    - "Cole-Cole model fits the dispersion with alpha ~ 0.7"
+    - "Contact area scaling is sublinear due to current crowding"
+  verified_facts:
+    - "Stratum corneum DC resistivity around 10^5 ohm-m"
+  expected_sources:
+    - "pubmed.ncbi.nlm.nih.gov"
+  expected_cost_usd: 0.35

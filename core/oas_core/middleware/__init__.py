@@ -18,6 +18,13 @@ from oas_core.middleware.governance import GovernanceMiddleware
 from oas_core.middleware.memory import MemoryMiddleware
 from oas_core.protocols.drvp import DRVPEvent, DRVPEventType, emit
 
+try:
+    from oas_core.knowledge.ingester import KnowledgeIngester as _KnowledgeIngester
+    _KNOWLEDGE_AVAILABLE = True
+except ImportError:
+    _KnowledgeIngester = None  # type: ignore[assignment,misc]
+    _KNOWLEDGE_AVAILABLE = False
+
 __all__ = ["Pipeline", "PipelineConfig"]
 
 logger = logging.getLogger("oas.middleware")
@@ -35,11 +42,13 @@ class PipelineConfig:
         audit: AuditMiddleware | None = None,
         governance: GovernanceMiddleware | None = None,
         memory: MemoryMiddleware | None = None,
+        knowledge_ingester: Any | None = None,
     ):
         self.budget = budget
         self.audit = audit
         self.governance = governance
         self.memory = memory
+        self.knowledge_ingester = knowledge_ingester
 
 
 class Pipeline:
@@ -144,6 +153,20 @@ class Pipeline:
                 await self.config.memory.post_store(
                     req_id, agent_name, device, task_id, result
                 )
+
+            # 7b. Knowledge: ingest step output into wiki (best-effort)
+            if self.config.knowledge_ingester and result:
+                try:
+                    text = result.get("output") or result.get("result") or ""
+                    if text:
+                        await self.config.knowledge_ingester.ingest(
+                            text=text,
+                            source_id=task_id,
+                            agent_id=agent_name,
+                            mission_id=req_id,
+                        )
+                except Exception as e:
+                    logger.warning("knowledge_ingest_failed", extra={"error": str(e)})
 
             # 8. Governance: update issue
             if self.config.governance and issue:

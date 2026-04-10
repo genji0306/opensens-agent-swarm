@@ -10,6 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -104,6 +105,7 @@ class CampaignStepSchema(BaseModel):
     completed_at: datetime | None = None
     issue_id: str | None = None
     cost: CostAttribution | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def duration_seconds(self) -> float | None:
@@ -177,3 +179,10 @@ class CampaignSchema(BaseModel):
     def from_checkpoint(cls, data: dict[str, Any]) -> CampaignSchema:
         """Restore campaign from persisted checkpoint."""
         return cls.model_validate(data)
+
+    @classmethod
+    def from_plan_file(cls, path: str | Path) -> CampaignSchema:
+        """Create a campaign schema from a markdown plan file."""
+        from oas_core.plan_file import PlanFile
+
+        return PlanFile.from_path(path).to_campaign()

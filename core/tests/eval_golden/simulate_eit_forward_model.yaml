@@ -1,0 +1,18 @@
+task_id: simulate_eit_forward_model
+task_type: SIMULATE
+description: "Simulate EIT forward model for circular electrode array"
+input: "Run a 2D EIT forward simulation with 16 electrodes in circular arrangement, saline medium at 1 S/m, single anomaly at center"
+ground_truth:
+  key_points:
+    - "voltage measurements"
+    - "sensitivity matrix"
+    - "mesh resolution"
+    - "boundary conditions"
+  verified_facts:
+    - "adjacent drive pattern produces 208 independent measurements for 16 electrodes"
+    - "complete electrode model accounts for contact impedance"
+    - "finite element mesh requires refinement near electrodes"
+  expected_sources:
+    - "EIDORS"
+    - "forward"
+  expected_cost_usd: 0.0

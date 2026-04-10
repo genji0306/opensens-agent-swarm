@@ -1,15 +1,14 @@
 """RL command handlers for dispatch.py.
 
-Implements /rl-train, /rl-status, /rl-rollback, /rl-freeze, and /debate
-slash commands that manage the OpenClaw-RL training lifecycle and
-MiroShark debate generation.
+Implements /rl-train, /rl-status, /rl-rollback, /rl-freeze, /prorl-status,
+/prorl-run, and /debate slash commands that manage OpenClaw-RL training,
+NVIDIA ProRL sidecar execution, and MiroShark debate generation.
 """
 from __future__ import annotations
 
 import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from shared.models import Task, TaskResult
@@ -20,10 +19,158 @@ __all__ = [
     "handle_rl_freeze",
     "handle_rl_rollback",
     "handle_rl_train",
+    "handle_prorl_status",
+    "handle_prorl_run",
     "handle_debate",
 ]
 
 logger = logging.getLogger("darklab.rl_commands")
+
+
+def _parse_rl_train_args(raw_args: str) -> tuple[str, str]:
+    """Parse `/rl-train` args and optional backend selector.
+
+    Supports:
+    - `<agent_type>`
+    - `<agent_type> --backend prorl`
+    - `<agent_type> --backend=prorl`
+    """
+    tokens = raw_args.split()
+    backend = "openclaw"
+    cleaned: list[str] = []
+    idx = 0
+    while idx < len(tokens):
+        token = tokens[idx]
+        if token == "--backend":
+            if idx + 1 < len(tokens):
+                backend = tokens[idx + 1].strip().lower()
+                idx += 2
+                continue
+            backend = ""
+            idx += 1
+            continue
+        if token.startswith("--backend="):
+            backend = token.split("=", 1)[1].strip().lower()
+            idx += 1
+            continue
+        cleaned.append(token)
+        idx += 1
+    return " ".join(cleaned).strip(), backend
+
+
+def _prorl_adapter():
+    from oas_core.adapters.prorl import ProRLAdapter
+
+    return ProRLAdapter(
+        base_url=settings.prorl_url,
+        timeout=float(settings.prorl_timeout),
+        api_key=settings.prorl_api_key,
+        default_data_source=settings.prorl_default_data_source,
+        default_model=settings.prorl_model,
+    )
+
+
+def _extract_registered_llm_servers(status_payload: dict[str, Any]) -> set[str]:
+    """Best-effort parse of registered LLM servers from ProRL status payload."""
+    candidates = (
+        status_payload.get("llm_servers"),
+        status_payload.get("registered_llm_servers"),
+        status_payload.get("servers"),
+    )
+    for value in candidates:
+        if isinstance(value, list):
+            values = {
+                str(item).strip()
+                for item in value
+                if str(item).strip()
+            }
+            if values:
+                return values
+    return set()
+
+
+def _status_is_healthy(status_payload: dict[str, Any]) -> bool:
+    healthy_raw = status_payload.get("healthy")
+    if isinstance(healthy_raw, bool):
+        return healthy_raw
+    status_raw = str(status_payload.get("status", "")).strip().lower()
+    if status_raw in {"ok", "healthy", "ready", "running"}:
+        return True
+    return bool(status_payload)
+
+
+async def _emit_prorl_tool_event(
+    *,
+    task: Task,
+    event_type: str,
+    payload: dict[str, Any],
+) -> None:
+    """Emit DRVP tool event for ProRL integration (best-effort)."""
+    try:
+        from oas_core.protocols.drvp import DRVPEvent, DRVPEventType, emit
+
+        mapping = {
+            "started": DRVPEventType.TOOL_CALL_STARTED,
+            "completed": DRVPEventType.TOOL_CALL_COMPLETED,
+            "failed": DRVPEventType.TOOL_CALL_FAILED,
+        }
+        event = mapping.get(event_type)
+        if event is None:
+            return
+
+        await emit(
+            DRVPEvent(
+                event_type=event,
+                request_id=task.task_id,
+                task_id=task.task_id,
+                issue_id=task.payload.get("_issue_key"),
+                agent_name="prorl",
+                device="leader",
+                payload=payload,
+            )
+        )
+    except Exception:
+        pass
+
+
+async def _ensure_prorl_issue(task: Task, prompt: str) -> tuple[str | None, str | None]:
+    """Ensure a Paperclip issue linkage exists for `/prorl-run` (best-effort)."""
+    issue_id = task.payload.get("_issue_id")
+    issue_key = task.payload.get("_issue_key")
+    if issue_id or issue_key:
+        return issue_id, issue_key
+
+    if not (settings.paperclip_url and settings.paperclip_api_key):
+        return None, None
+
+    try:
+        from oas_core.adapters.paperclip import PaperclipClient
+        from oas_core.middleware.governance import GovernanceMiddleware
+
+        gov = GovernanceMiddleware(
+            paperclip=PaperclipClient(
+                base_url=settings.paperclip_url,
+                api_key=settings.paperclip_api_key,
+                company_id=settings.paperclip_company_id,
+            ),
+            agent_id=settings.paperclip_agent_id,
+        )
+        issue = await gov.open_issue(
+            request_id=task.task_id,
+            title=f"ProRL run: {prompt[:96]}",
+            agent_name="prorl",
+            device="leader",
+            description="Auto-created for /prorl-run experimental execution.",
+        )
+        if issue:
+            issue_id = issue.get("id")
+            issue_key = issue.get("key")
+            task.payload["_issue_id"] = issue_id
+            task.payload["_issue_key"] = issue_key
+    except Exception as exc:
+        logger.debug("prorl_issue_link_skip", error=str(exc))
+
+    return issue_id, issue_key
 
 
 async def handle_rl_status(task: Task) -> TaskResult:
@@ -183,14 +330,48 @@ async def handle_rl_train(task: Task) -> TaskResult:
     """Trigger a training cycle for an agent type.
 
     Usage: /rl-train research
+           /rl-train research --backend prorl
     """
-    args = task.payload.get("text", "").strip()
+    raw_args = task.payload.get("text", "").strip()
+    if not raw_args:
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={"error": "Usage: /rl-train <agent_type> [--backend openclaw|prorl]"},
+        )
+
+    args, backend = _parse_rl_train_args(raw_args)
     if not args:
         return TaskResult(
             task_id=task.task_id,
             agent_name="rl-commands",
             status="error",
-            result={"error": "Usage: /rl-train <agent_type>"},
+            result={"error": "Usage: /rl-train <agent_type> [--backend openclaw|prorl]"},
+        )
+    if backend not in {"openclaw", "prorl"}:
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={"error": f"Unsupported backend '{backend}'. Use openclaw or prorl."},
+        )
+
+    if backend == "prorl":
+        if not settings.prorl_enabled:
+            return TaskResult(
+                task_id=task.task_id,
+                agent_name="rl-commands",
+                status="error",
+                result={"error": "ProRL backend disabled (set DARKLAB_PRORL_ENABLED=true)."},
+            )
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={
+                "error": "ProRL backend for /rl-train is not enabled yet. Use /prorl-run for phase-2 experimental execution.",
+            },
         )
 
     agent_type = args.lower()
@@ -288,6 +469,7 @@ async def handle_rl_train(task: Task) -> TaskResult:
                 "live_rollouts": batch.live_count,
                 "synthetic_rollouts": batch.synthetic_count,
                 "total": batch.total,
+                "backend": "openclaw",
                 "tinker_job": training_job,
                 "tinker_status": "submitted" if training_job else "skipped (no aiohttp or circuit breaker open)",
             },
@@ -298,6 +480,253 @@ async def handle_rl_train(task: Task) -> TaskResult:
             agent_name="rl-commands",
             status="error",
             result={"error": str(exc)},
+        )
+
+
+async def handle_prorl_status(task: Task) -> TaskResult:
+    """Show readiness and registration status for the ProRL sidecar."""
+    status_result: dict[str, Any] = {
+        "backend": "prorl",
+        "enabled": settings.prorl_enabled,
+        "url": settings.prorl_url or "(not configured)",
+        "llm_server": settings.prorl_llm_server or "(not configured)",
+    }
+
+    if not settings.prorl_enabled:
+        status_result.update(
+            {
+                "ready": False,
+                "healthy": False,
+                "message": "ProRL disabled (set DARKLAB_PRORL_ENABLED=true to enable).",
+            }
+        )
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="ok",
+            result=status_result,
+        )
+
+    if not settings.prorl_url:
+        status_result.update(
+            {
+                "ready": False,
+                "healthy": False,
+                "message": "DARKLAB_PRORL_URL is not configured.",
+            }
+        )
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result=status_result,
+        )
+
+    try:
+        adapter = _prorl_adapter()
+        upstream_status = await adapter.status()
+        healthy = _status_is_healthy(upstream_status)
+
+        desired_server = settings.prorl_llm_server.strip()
+        llm_registration = "not_configured"
+        llm_registration_error = ""
+        registered_servers = _extract_registered_llm_servers(upstream_status)
+        start_response: dict[str, Any] | None = None
+
+        if desired_server:
+            if desired_server in registered_servers:
+                llm_registration = "already_registered"
+            else:
+                try:
+                    await adapter.add_llm_server(desired_server)
+                    start_response = await adapter.start()
+                    llm_registration = "registered"
+                    upstream_status = await adapter.status()
+                    registered_servers = _extract_registered_llm_servers(upstream_status)
+                except Exception as exc:
+                    llm_registration = "registration_failed"
+                    llm_registration_error = str(exc)
+
+        healthy = _status_is_healthy(upstream_status)
+        ready = healthy and (not desired_server or desired_server in registered_servers)
+        status_result.update(
+            {
+                "healthy": healthy,
+                "ready": ready,
+                "llm_registration": llm_registration,
+                "registered_llm_servers": sorted(registered_servers),
+                "status_payload": upstream_status,
+                "start_response": start_response,
+                "message": (
+                    "ProRL is ready."
+                    if ready
+                    else "ProRL reachable but not fully ready. Check registration and backend status."
+                ),
+            }
+        )
+        if llm_registration_error:
+            status_result["llm_registration_error"] = llm_registration_error
+
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="ok" if ready else "error",
+            result=status_result,
+        )
+    except Exception as exc:
+        status_result.update(
+            {
+                "healthy": False,
+                "ready": False,
+                "message": "Failed to query ProRL status.",
+                "error": str(exc),
+            }
+        )
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result=status_result,
+        )
+
+
+async def handle_prorl_run(task: Task) -> TaskResult:
+    """Submit a bounded experimental prompt to ProRL `/process`.
+
+    Usage: /prorl-run <prompt>
+    """
+    prompt = task.payload.get("text", "").strip()
+    if not prompt:
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={"error": "Usage: /prorl-run <prompt>"},
+        )
+
+    if not settings.prorl_enabled:
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={"error": "ProRL disabled (set DARKLAB_PRORL_ENABLED=true)."},
+        )
+    if not settings.prorl_url:
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={"error": "DARKLAB_PRORL_URL is not configured."},
+        )
+
+    issue_id, issue_key = await _ensure_prorl_issue(task, prompt)
+
+    metadata = {
+        "task_type": task.task_type.value,
+        "source": task.payload.get("source", "leader"),
+        "issue_id": issue_id,
+        "issue_key": issue_key,
+        "user_id": task.user_id,
+        "raw_text": task.payload.get("raw_text", ""),
+    }
+    if "_worktree" in task.payload:
+        metadata["worktree"] = task.payload["_worktree"]
+
+    adapter = _prorl_adapter()
+    instance = adapter.build_instance(
+        request_id=task.task_id,
+        prompt=prompt,
+        metadata=metadata,
+    )
+    sampling_params = adapter.build_sampling_params(model=settings.prorl_model)
+
+    await _emit_prorl_tool_event(
+        task=task,
+        event_type="started",
+        payload={
+            "backend": "prorl",
+            "endpoint": "/process",
+            "model": settings.prorl_model,
+            "issue_id": issue_id,
+            "issue_key": issue_key,
+        },
+    )
+
+    try:
+        result = await adapter.process(
+            instance=instance,
+            sampling_params=sampling_params,
+            request_id=task.task_id,
+            agent_name="leader",
+            device="leader",
+        )
+        event_type = "completed" if result.get("status") == "ok" else "failed"
+        await _emit_prorl_tool_event(
+            task=task,
+            event_type=event_type,
+            payload={
+                "backend": "prorl",
+                "request_id": task.task_id,
+                "status": result.get("status", "error"),
+                "summary": str(result.get("summary", ""))[:300],
+                "issue_id": issue_id,
+                "issue_key": issue_key,
+            },
+        )
+        if event_type == "failed":
+            try:
+                from oas_core.protocols.drvp import DRVPEvent, DRVPEventType, emit
+
+                await emit(
+                    DRVPEvent(
+                        event_type=DRVPEventType.AGENT_ERROR,
+                        request_id=task.task_id,
+                        task_id=task.task_id,
+                        issue_id=issue_key,
+                        agent_name="prorl",
+                        device="leader",
+                        payload={
+                            "backend": "prorl",
+                            "status": result.get("status"),
+                            "summary": str(result.get("summary", ""))[:300],
+                        },
+                    )
+                )
+            except Exception:
+                pass
+
+        result["issue_id"] = issue_id
+        result["issue_key"] = issue_key
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="ok" if result.get("status") == "ok" else "error",
+            result=result,
+        )
+    except Exception as exc:
+        await _emit_prorl_tool_event(
+            task=task,
+            event_type="failed",
+            payload={
+                "backend": "prorl",
+                "request_id": task.task_id,
+                "error": str(exc),
+                "issue_id": issue_id,
+                "issue_key": issue_key,
+            },
+        )
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="rl-commands",
+            status="error",
+            result={
+                "backend": "prorl",
+                "request_id": task.task_id,
+                "status": "error",
+                "error": str(exc),
+                "issue_id": issue_id,
+                "issue_key": issue_key,
+            },
         )
 
 

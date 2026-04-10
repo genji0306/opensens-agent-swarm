@@ -1,0 +1,18 @@
+task_id: research_solid_polymer_electrolytes
+task_type: RESEARCH
+description: "Survey solid polymer electrolytes for all-solid-state lithium batteries"
+input: "Research PEO-based and single-ion-conductor solid polymer electrolytes for Li-metal anodes"
+ground_truth:
+  key_points:
+    - "PEO-LiTFSI room-temperature conductivity typically 10^-5 to 10^-4 S/cm"
+    - "Single-ion conductors reduce concentration polarization at the Li interface"
+    - "Mechanical modulus above ~6 GPa required to suppress Li dendrite growth"
+    - "Plasticizers and ceramic fillers (LLZO, LLTO) boost conductivity"
+  verified_facts:
+    - "PEO glass transition temperature around -60 C"
+    - "LiTFSI is less corrosive to Al current collectors than LiPF6 above 3 V"
+  expected_sources:
+    - "arxiv.org"
+    - "pubs.acs.org"
+    - "onlinelibrary.wiley.com"
+  expected_cost_usd: 0.45

@@ -1,0 +1,17 @@
+task_id: autoresearch_flexible_substrates
+task_type: AUTORESEARCH
+description: "Auto-research loop on flexible substrates for stretchable electronics"
+input: "Run an iterative research loop on flexible substrates (PDMS, PI, TPU) for stretchable bio-sensing arrays"
+ground_truth:
+  key_points:
+    - "PDMS offers highest stretch but poor adhesion for metal traces"
+    - "Polyimide enables higher processing temperatures (~350 C)"
+    - "TPU balances stretch and adhesion with moderate processing window"
+    - "Serpentine and fractal interconnects tolerate >50% strain"
+  verified_facts:
+    - "PDMS Young's modulus tunable from 0.5 to 3 MPa by crosslinker ratio"
+  expected_sources:
+    - "arxiv.org"
+    - "pubs.rsc.org"
+    - "nature.com"
+  expected_cost_usd: 0.55

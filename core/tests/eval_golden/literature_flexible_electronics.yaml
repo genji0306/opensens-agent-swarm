@@ -1,0 +1,21 @@
+task_id: literature_flexible_electronics
+task_type: LITERATURE
+description: "Literature review of flexible printed electronics for sensor arrays"
+input: "Survey literature on flexible printed electronics fabrication for sensor arrays: screen printing, aerosol jet, and gravure printing of conductive inks on polymer substrates"
+ground_truth:
+  key_points:
+    - "screen printing"
+    - "aerosol jet"
+    - "gravure printing"
+    - "conductive ink"
+    - "polymer substrate"
+    - "resolution"
+  verified_facts:
+    - "aerosol jet printing achieves line widths below 20 micrometers"
+    - "screen printing is the most cost-effective for large-area sensor production"
+    - "silver nanoparticle inks require sintering above 150°C for optimal conductivity"
+  expected_sources:
+    - "10.1002"
+    - "printed"
+    - "flexible"
+  expected_cost_usd: 0.0

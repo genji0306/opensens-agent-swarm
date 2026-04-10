@@ -1,0 +1,22 @@
+task_id: deep_research_solid_state_batteries
+task_type: DEEP_RESEARCH
+description: "Deep research on solid-state battery impedance characterization"
+input: "Deep research on using impedance spectroscopy and tomography for in-situ characterization of solid-state battery interfaces: Li7La3Zr2O12 garnet, sulfide, and polymer electrolytes"
+ground_truth:
+  key_points:
+    - "interfacial resistance"
+    - "grain boundary"
+    - "dendrite detection"
+    - "in-situ monitoring"
+    - "distribution of relaxation times"
+  verified_facts:
+    - "LLZO garnet electrolyte has ionic conductivity around 1 mS/cm at room temperature"
+    - "sulfide electrolytes achieve higher conductivities but are air-sensitive"
+    - "distribution of relaxation times analysis deconvolves overlapping impedance arcs"
+    - "in-situ EIT can detect lithium dendrite nucleation"
+  expected_sources:
+    - "10.1038"
+    - "solid-state"
+    - "impedance"
+    - "battery"
+  expected_cost_usd: 0.05

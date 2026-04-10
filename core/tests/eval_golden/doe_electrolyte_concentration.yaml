@@ -1,0 +1,15 @@
+task_id: doe_electrolyte_concentration
+task_type: DOE
+description: "Design of experiments for ionic liquid electrolyte concentration sweep"
+input: "Design a 3-factor Box-Behnken study varying BMIM-BF4 concentration, temperature, and scan rate"
+ground_truth:
+  key_points:
+    - "Box-Behnken with 3 factors requires 15 runs including center points"
+    - "Response variables: peak current, peak separation, charge efficiency"
+    - "Center point replication used to estimate pure error"
+  verified_facts:
+    - "Box-Behnken avoids corner points that exceed operating envelope"
+  expected_sources:
+    - "jmp.com"
+    - "minitab.com"
+  expected_cost_usd: 0.25

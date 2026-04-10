@@ -11,6 +11,7 @@ from oas_core.decision.policy_engine import (
     ConfidenceFloorRule,
     MaxRetriesRule,
     HumanEscalationRule,
+    IdleBudgetRule,
 )
 from oas_core.schemas.campaign import (
     CampaignSchema,
@@ -113,6 +114,27 @@ class TestHumanEscalationRule:
         v = rule.evaluate(campaign, [], {})
         assert v is not None
         assert "50%" in v.message
+
+
+class TestIdleBudgetRule:
+    def test_blocks_background_work_over_idle_cap(self):
+        rule = IdleBudgetRule(max_idle_spend_ratio=0.2)
+        violation = rule.evaluate(
+            _make_campaign(),
+            [],
+            {"action_scope": "kairos", "daily_spend_ratio": 0.35},
+        )
+        assert violation is not None
+        assert violation.severity == "block"
+        assert "Idle work blocked" in violation.message
+
+    def test_ignores_non_idle_scope(self):
+        rule = IdleBudgetRule(max_idle_spend_ratio=0.2)
+        assert rule.evaluate(
+            _make_campaign(),
+            [],
+            {"action_scope": "foreground", "daily_spend_ratio": 0.9},
+        ) is None
 
 
 class TestDecisionPolicyEngine:

@@ -1,0 +1,20 @@
+task_id: research_pedot_pss_coatings
+task_type: RESEARCH
+description: "Research PEDOT:PSS conductive polymer coatings for flexible sensors"
+input: "Review PEDOT:PSS thin film deposition methods and their impact on conductivity for flexible EIT sensor arrays"
+ground_truth:
+  key_points:
+    - "spin coating"
+    - "inkjet printing"
+    - "conductivity enhancement"
+    - "DMSO treatment"
+    - "flexibility"
+  verified_facts:
+    - "PEDOT:PSS conductivity can exceed 1000 S/cm with secondary doping"
+    - "DMSO and ethylene glycol are common secondary dopants"
+    - "annealing temperature affects film morphology"
+  expected_sources:
+    - "10.1002"
+    - "PEDOT"
+    - "conductiv"
+  expected_cost_usd: 0.0

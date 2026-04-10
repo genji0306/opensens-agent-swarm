@@ -1,0 +1,20 @@
+task_id: synthesize_sensor_calibration_methods
+task_type: SYNTHESIZE
+description: "Synthesize calibration approaches for impedance-based multi-analyte sensors"
+input: "Compare and synthesize calibration strategies for multi-analyte impedance sensors: PLS regression, neural networks, and equivalent circuit fitting"
+ground_truth:
+  key_points:
+    - "partial least squares"
+    - "neural network"
+    - "equivalent circuit"
+    - "cross-validation"
+    - "selectivity"
+  verified_facts:
+    - "PLS regression handles collinear spectral data effectively"
+    - "neural networks can model nonlinear sensor responses"
+    - "equivalent circuit fitting provides physical insight into interfacial processes"
+  expected_sources:
+    - "calibration"
+    - "impedance"
+    - "multivariate"
+  expected_cost_usd: 0.02

@@ -391,6 +391,7 @@ class TestBoostEligibleTasks:
             "RESEARCH", "LITERATURE", "PAPER", "DOE",
             "SYNTHESIZE", "AUTORESEARCH", "DEERFLOW",
             "DEEP_RESEARCH", "SWARM_RESEARCH", "FULL_SWARM",
+            "UNIPAT_SWARM",
         }
         assert BOOST_ELIGIBLE_TASKS == expected
 

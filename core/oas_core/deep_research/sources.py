@@ -94,7 +94,7 @@ class AcademicSearcher:
             if isinstance(batch, list):
                 results.extend(batch)
             elif isinstance(batch, Exception):
-                logger.warning("source_search_error", error=str(batch))
+                logger.warning("source_search_error: %s", str(batch))
 
         # Deduplicate by DOI
         seen_dois: set[str] = set()
@@ -106,7 +106,7 @@ class AcademicSearcher:
                 seen_dois.add(r.doi)
             unique.append(r)
 
-        logger.info("academic_search_complete", query=query[:80], results=len(unique))
+        logger.info("academic_search_complete: query=%s results=%d", query[:80], len(unique))
         return unique
 
     async def search_arxiv(self, query: str) -> list[SearchResult]:
@@ -128,7 +128,7 @@ class AcademicSearcher:
                     text = await resp.text()
                     return self._parse_arxiv_atom(text)
         except Exception as exc:
-            logger.warning("arxiv_search_failed", error=str(exc))
+            logger.warning("arxiv_search_failed: %s", exc)
             return []
 
     def _parse_arxiv_atom(self, xml_text: str) -> list[SearchResult]:
@@ -216,7 +216,7 @@ class AcademicSearcher:
                         ))
                     return results
         except Exception as exc:
-            logger.warning("semantic_scholar_search_failed", error=str(exc))
+            logger.warning("semantic_scholar_search_failed: %s", exc)
             return []
 
     async def search_biorxiv(self, query: str) -> list[SearchResult]:
@@ -259,7 +259,7 @@ class AcademicSearcher:
                             ))
                     return results[:5]
         except Exception as exc:
-            logger.warning("biorxiv_search_failed", error=str(exc))
+            logger.warning("biorxiv_search_failed: %s", exc)
             return []
 
     async def search_pubmed(self, query: str) -> list[SearchResult]:
@@ -322,7 +322,7 @@ class AcademicSearcher:
                         ))
                     return results
         except Exception as exc:
-            logger.warning("pubmed_search_failed", error=str(exc))
+            logger.warning("pubmed_search_failed: %s", exc)
             return []
 
     async def search_openalex(self, query: str) -> list[SearchResult]:
@@ -385,7 +385,7 @@ class AcademicSearcher:
                         ))
                     return results
         except Exception as exc:
-            logger.warning("openalex_search_failed", error=str(exc))
+            logger.warning("openalex_search_failed: %s", exc)
             return []
 
     async def search_crossref(self, query: str) -> list[SearchResult]:
@@ -437,7 +437,7 @@ class AcademicSearcher:
                         ))
                     return results
         except Exception as exc:
-            logger.warning("crossref_search_failed", error=str(exc))
+            logger.warning("crossref_search_failed: %s", exc)
             return []
 
     async def search_europepmc(self, query: str) -> list[SearchResult]:
@@ -479,5 +479,5 @@ class AcademicSearcher:
                         ))
                     return results
         except Exception as exc:
-            logger.warning("europepmc_search_failed", error=str(exc))
+            logger.warning("europepmc_search_failed: %s", exc)
             return []
