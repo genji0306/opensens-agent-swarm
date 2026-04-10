@@ -23,8 +23,12 @@ memory = [
 redis = [
     "redis[hiredis]>=5.0",
 ]
+wiki = [
+    "lancedb>=0.6",
+    "mlx-embeddings>=0.1",
+]
 all = [
-    "oas-core[swarm,memory,redis]",
+    "oas-core[swarm,memory,redis,wiki]",
 ]
 dev = [
     "pytest>=8.0",

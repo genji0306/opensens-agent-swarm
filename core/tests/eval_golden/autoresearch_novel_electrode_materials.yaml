@@ -1,0 +1,20 @@
+task_id: autoresearch_novel_electrode_materials
+task_type: AUTORESEARCH
+description: "Autonomous research discovery of novel electrode materials for EIT"
+input: "Run autonomous research to discover emerging electrode materials for next-generation EIT sensors, focusing on publications from the last 12 months with novel synthesis methods or exceptional performance metrics"
+ground_truth:
+  key_points:
+    - "emerging materials"
+    - "synthesis method"
+    - "performance metrics"
+    - "novelty assessment"
+    - "reproducibility"
+  verified_facts:
+    - "metal-organic frameworks are emerging as tunable electrode materials"
+    - "laser-induced graphene enables single-step electrode patterning"
+    - "self-assembled monolayers provide molecular-level surface control"
+  expected_sources:
+    - "10.1021"
+    - "electrode"
+    - "novel"
+  expected_cost_usd: 0.03

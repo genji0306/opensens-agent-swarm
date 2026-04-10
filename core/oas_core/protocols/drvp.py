@@ -146,6 +146,51 @@ class DRVPEventType(str, Enum):
     COMPUTE_CAPABILITY_PUBLISHED = "compute.capability.published"
     COMPUTE_PRIORITY_FLOOR_CHANGED = "compute.priority_floor.changed"
 
+    # Promotion pipeline (OAS v2 Phase 25)
+    PROMOTION_PIPELINE_STARTED = "promotion.pipeline.started"
+    PROMOTION_GATE_PASSED = "promotion.gate.passed"
+    PROMOTION_GATE_FAILED = "promotion.gate.failed"
+    PROMOTION_PIPELINE_PASSED = "promotion.pipeline.passed"
+    PROMOTION_PIPELINE_FAILED = "promotion.pipeline.failed"
+
+    # Shadow runs (OAS v2 Phase 25)
+    SHADOW_RUN_STARTED = "shadow.run.started"
+    SHADOW_RUN_SAMPLE = "shadow.run.sample"
+    SHADOW_RUN_PASSED = "shadow.run.passed"
+    SHADOW_RUN_FAILED = "shadow.run.failed"
+
+    # Auto-rollback (OAS v2 Phase 25)
+    ROLLBACK_MONITORING_STARTED = "rollback.monitoring.started"
+    ROLLBACK_TRIGGERED = "rollback.triggered"
+    ROLLBACK_EXECUTED = "rollback.executed"
+    ROLLBACK_STABLE = "rollback.stable"
+
+    # Benchmark (OAS v2 Phase 25)
+    BENCHMARK_FROZEN = "benchmark.frozen"
+    BENCHMARK_UPDATE_REQUESTED = "benchmark.update.requested"
+
+    # WebAuthn (OAS v2 Phase 25)
+    WEBAUTHN_DEVICE_ENROLLED = "webauthn.device.enrolled"
+    WEBAUTHN_DEVICE_REVOKED = "webauthn.device.revoked"
+    WEBAUTHN_AUTH_SUCCESS = "webauthn.auth.success"
+    WEBAUTHN_AUTH_FAILED = "webauthn.auth.failed"
+
+    # Opus tuning (OAS v2 Phase 25)
+    OPUS_TUNING_REPORT_GENERATED = "opus.tuning.report_generated"
+    OPUS_TUNING_RECOMMENDATION = "opus.tuning.recommendation"
+
+    # Knowledge system (Phase 25)
+    KNOWLEDGE_INGESTED = "knowledge.ingested"
+    KNOWLEDGE_CONFLICT_DETECTED = "knowledge.conflict.detected"
+    KNOWLEDGE_CONFLICT_AUTO_RESOLVED = "knowledge.conflict.auto_resolved"
+    KNOWLEDGE_PAGE_COMPILED = "knowledge.page.compiled"
+    WIKI_LINT_COMPLETED = "wiki.lint.completed"
+    WIKI_SYNC_COMPLETED = "wiki.sync.completed"
+
+    # Eval system (Phase 25)
+    EVAL_RUN_COMPLETED = "eval.run.completed"
+    EVAL_REGRESSION_DETECTED = "eval.regression.detected"
+
 
 class DRVPEvent(BaseModel):
     """A single DRVP event emitted by the OAS middleware pipeline."""

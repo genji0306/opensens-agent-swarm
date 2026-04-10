@@ -1,0 +1,19 @@
+task_id: doe_electrode_geometry
+task_type: DOE
+description: "Design of experiments for EIT electrode geometry optimization"
+input: "Create a fractional factorial DOE for optimizing EIT electrode geometry: factors include electrode count (8-32), electrode width (1-5mm), gap ratio (0.5-2.0), array diameter (50-200mm)"
+ground_truth:
+  key_points:
+    - "fractional factorial"
+    - "resolution"
+    - "main effects"
+    - "interactions"
+    - "response surface"
+  verified_facts:
+    - "2^(4-1) fractional factorial gives resolution IV with 8 runs"
+    - "electrode count and width have the strongest effect on sensitivity"
+    - "gap ratio interacts with electrode width for fringing field coverage"
+  expected_sources:
+    - "DOE"
+    - "factorial"
+  expected_cost_usd: 0.0

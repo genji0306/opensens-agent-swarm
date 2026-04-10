@@ -1,0 +1,20 @@
+task_id: literature_impedance_spectroscopy
+task_type: LITERATURE
+description: "Literature review of impedance spectroscopy for biosensing"
+input: "Review recent literature (2020-2024) on electrochemical impedance spectroscopy for point-of-care biosensing: aptamer, antibody, and molecularly imprinted polymer recognition elements"
+ground_truth:
+  key_points:
+    - "aptamer sensors"
+    - "antibody-based"
+    - "molecularly imprinted polymers"
+    - "limit of detection"
+    - "point-of-care"
+  verified_facts:
+    - "aptamer-based impedimetric sensors achieve picomolar detection limits"
+    - "molecularly imprinted polymers offer thermal and chemical stability advantages"
+    - "Nyquist and Bode plots are standard representations for impedance data"
+  expected_sources:
+    - "10.1016"
+    - "biosens"
+    - "impedance"
+  expected_cost_usd: 0.0

@@ -1,0 +1,17 @@
+task_id: deep_research_neuromorphic_sensing
+task_type: DEEP_RESEARCH
+description: "Deep research on neuromorphic processing for bio-impedance sensing"
+input: "Deep research whether spiking neural networks on neuromorphic hardware can improve bio-impedance signal processing"
+ground_truth:
+  key_points:
+    - "Loihi-2 and Akida are the two main production neuromorphic accelerators"
+    - "SNN inference power is roughly 100x lower than equivalent ANN on MCU"
+    - "Encoding continuous impedance data into spikes remains an open problem"
+    - "Event-driven processing aligns with sparse physiological signal patterns"
+  verified_facts:
+    - "Loihi-2 supports on-chip learning with graded spikes"
+  expected_sources:
+    - "arxiv.org"
+    - "intel.com"
+    - "brainchip.com"
+  expected_cost_usd: 0.60

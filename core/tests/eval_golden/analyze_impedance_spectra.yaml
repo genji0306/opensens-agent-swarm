@@ -1,0 +1,19 @@
+task_id: analyze_impedance_spectra
+task_type: ANALYZE
+description: "Analyze impedance spectra from ionic liquid sensor prototype"
+input: "Analyze impedance spectra (100 Hz to 1 MHz) from BMIM-BF4 ionic liquid sensor exposed to varying NaCl concentrations (0.1-100 mM): extract equivalent circuit parameters and calibration curve"
+ground_truth:
+  key_points:
+    - "equivalent circuit"
+    - "charge transfer resistance"
+    - "double layer capacitance"
+    - "Warburg impedance"
+    - "calibration curve"
+  verified_facts:
+    - "Randles circuit is a common starting model for electrochemical impedance"
+    - "charge transfer resistance decreases with increasing ion concentration"
+    - "constant phase element replaces ideal capacitor for rough electrodes"
+  expected_sources:
+    - "impedance"
+    - "equivalent circuit"
+  expected_cost_usd: 0.0

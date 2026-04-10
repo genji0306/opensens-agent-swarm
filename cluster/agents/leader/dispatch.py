@@ -910,6 +910,11 @@ ROUTING_TABLE: dict[str, Route] = {
     "orchestrate":  Route("leader",      "darklab-orchestrator",  TaskType.ORCHESTRATE),
     # KAIROS — background ambient reasoning daemon (v2 Phase 24)
     "kairos":       Route("leader",      "darklab-kairos",        TaskType.KAIROS),
+    # Knowledge wiki + eval (Phase 25)
+    "wiki-compile": Route("leader",      "darklab-knowledge-wiki", TaskType.WIKI_COMPILE),
+    "wiki-lint":    Route("leader",      "darklab-knowledge-wiki", TaskType.WIKI_LINT),
+    "eval-run":     Route("leader",      "darklab-eval-harness",   TaskType.EVAL_RUN),
+    "eval-report":  Route("leader",      "darklab-eval-harness",   TaskType.EVAL_REPORT),
 }
 
 COMMAND_ALIASES: dict[str, str] = {
@@ -925,6 +930,10 @@ COMMAND_ALIASES: dict[str, str] = {
     "uniscientist": "unipat",
     "orchestrator": "orchestrate",
     "kairos_daemon": "kairos",
+    "approve": "fullswarm",
+    "reject": "fullswarm",
+    "discover": "fullswarm",
+    "full_swarm": "fullswarm",
     "report_data": "report-data",
     "rl_train": "rl-train",
     "rl_status": "rl-status",

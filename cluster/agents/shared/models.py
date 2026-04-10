@@ -56,6 +56,12 @@ class TaskType(str, Enum):
     # KAIROS daemon (v2 Phase 24)
     KAIROS = "kairos"
 
+    # Knowledge wiki + eval (Phase 25)
+    WIKI_COMPILE = "wiki_compile"
+    WIKI_LINT = "wiki_lint"
+    EVAL_RUN = "eval_run"
+    EVAL_REPORT = "eval_report"
+
     # System
     STATUS = "status"
 

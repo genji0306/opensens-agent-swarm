@@ -1,0 +1,15 @@
+task_id: literature_wearable_electrochemical
+task_type: LITERATURE
+description: "Literature survey on wearable electrochemical sensors 2022-2026"
+input: "Survey wearable electrochemical sensors for sweat metabolite monitoring published 2022-2026"
+ground_truth:
+  key_points:
+    - "Glucose, lactate, cortisol, and urea are the most-studied targets"
+    - "Microfluidic sweat collection is essential for reliable readings"
+    - "Iontophoretic sweat induction enables at-rest sensing"
+  verified_facts:
+    - "Sweat glucose correlates with blood glucose with delay ~10-20 min"
+  expected_sources:
+    - "pubmed.ncbi.nlm.nih.gov"
+    - "nature.com"
+  expected_cost_usd: 0.40

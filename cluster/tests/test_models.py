@@ -23,6 +23,10 @@ class TestTaskType:
             "unipat_swarm",
             "orchestrate",
             "kairos",
+            "wiki_compile",
+            "wiki_lint",
+            "eval_run",
+            "eval_report",
             "status",
         }
         actual = {t.value for t in TaskType}

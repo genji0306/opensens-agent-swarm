@@ -1,0 +1,19 @@
+task_id: simulate_md_ionic_liquid_interface
+task_type: SIMULATE
+description: "Molecular dynamics simulation of ionic liquid at electrode interface"
+input: "Run classical MD simulation of EMIM-TFSI ionic liquid confined between two gold electrodes at 300K, analyze electric double layer structure"
+ground_truth:
+  key_points:
+    - "double layer structure"
+    - "charge density profile"
+    - "overscreening"
+    - "number density"
+  verified_facts:
+    - "ionic liquids exhibit overscreening at charged interfaces"
+    - "EMIM-TFSI shows alternating cation-anion layers near the electrode"
+    - "equilibration requires at least 5 ns for ionic liquid simulations"
+  expected_sources:
+    - "LAMMPS"
+    - "molecular dynamics"
+    - "ionic liquid"
+  expected_cost_usd: 0.0

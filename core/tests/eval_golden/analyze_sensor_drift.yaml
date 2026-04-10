@@ -1,0 +1,20 @@
+task_id: analyze_sensor_drift
+task_type: ANALYZE
+description: "Analyze long-term drift in EIT sensor array measurements"
+input: "Analyze 30-day continuous measurement data from a 16-electrode EIT sensor array: quantify drift, identify drift sources, and propose compensation strategies"
+ground_truth:
+  key_points:
+    - "baseline drift"
+    - "temperature compensation"
+    - "electrode degradation"
+    - "reference measurement"
+    - "drift correction"
+  verified_facts:
+    - "temperature coefficient of conductivity for aqueous solutions is approximately 2% per degree Celsius"
+    - "electrode fouling causes monotonic increase in contact impedance"
+    - "differential measurements reduce common-mode drift"
+  expected_sources:
+    - "drift"
+    - "sensor"
+    - "compensation"
+  expected_cost_usd: 0.0

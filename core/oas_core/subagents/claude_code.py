@@ -6,6 +6,12 @@ within a campaign step.
 
 Requires the ``claude`` CLI to be installed and accessible on PATH.
 Streams output via DRVP events for real-time visibility.
+
+ECC Integration:
+    When ``skill`` is specified, the agent loads the corresponding
+    Everything Claude Code (ECC) skill from ``.claude/skills/`` and
+    prepends its content to the system prompt, giving the sub-agent
+    domain-specific patterns and best practices for the task.
 """
 
 from __future__ import annotations
@@ -14,15 +20,120 @@ import asyncio
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from oas_core.protocols.drvp import DRVPEvent, DRVPEventType, emit
 
-__all__ = ["ClaudeCodeAgent", "ClaudeCodeResult"]
+__all__ = [
+    "ClaudeCodeAgent",
+    "ClaudeCodeResult",
+    "load_ecc_skill",
+    "list_ecc_skills",
+]
 
 logger = logging.getLogger("oas.subagents.claude_code")
+
+# ---------------------------------------------------------------------------
+# ECC Skill helpers
+# ---------------------------------------------------------------------------
+
+def _find_project_root() -> Path:
+    """Walk up from this file to find the workspace root.
+
+    The workspace root is identified by having BOTH pyproject.toml and a
+    .claude/ directory (to distinguish from member packages like core/).
+    Falls back to pyproject.toml-only match, preferring the highest ancestor.
+    """
+    cur = Path(__file__).resolve().parent
+    candidates: list[Path] = []
+    for _ in range(10):
+        if (cur / "pyproject.toml").exists():
+            # Prefer root that has .claude/ directory
+            if (cur / ".claude").is_dir():
+                return cur
+            candidates.append(cur)
+        cur = cur.parent
+    # Fall back to highest pyproject.toml ancestor
+    return candidates[-1] if candidates else Path.cwd()
+
+
+_PROJECT_ROOT = _find_project_root()
+_ECC_SKILLS_DIR = _PROJECT_ROOT / ".claude" / "skills"
+_ECC_AGENTS_DIR = _PROJECT_ROOT / ".claude" / "agents"
+
+
+def load_ecc_skill(skill_name: str) -> str | None:
+    """Load an ECC skill definition by name.
+
+    Returns the SKILL.md content or None if not found.
+    """
+    skill_path = _ECC_SKILLS_DIR / skill_name / "SKILL.md"
+    if skill_path.is_file():
+        return skill_path.read_text(encoding="utf-8")
+    return None
+
+
+def load_ecc_agent(agent_name: str) -> str | None:
+    """Load an ECC agent definition by name.
+
+    Returns the agent markdown content or None if not found.
+    """
+    agent_path = _ECC_AGENTS_DIR / f"{agent_name}.md"
+    if agent_path.is_file():
+        return agent_path.read_text(encoding="utf-8")
+    return None
+
+
+def list_ecc_skills() -> list[str]:
+    """Return names of all installed ECC skills."""
+    if not _ECC_SKILLS_DIR.is_dir():
+        return []
+    return sorted(
+        d.name for d in _ECC_SKILLS_DIR.iterdir()
+        if d.is_dir() and (d / "SKILL.md").exists()
+    )
+
+
+def list_ecc_agents() -> list[str]:
+    """Return names of all installed ECC agents."""
+    if not _ECC_AGENTS_DIR.is_dir():
+        return []
+    return sorted(
+        p.stem for p in _ECC_AGENTS_DIR.glob("*.md")
+    )
+
+
+# Map DarkLab task types to relevant ECC skills for auto-enrichment
+TASK_SKILL_MAP: dict[str, list[str]] = {
+    "RESEARCH": ["deep-research", "search-first"],
+    "LITERATURE": ["deep-research"],
+    "SIMULATE": ["python-patterns", "pytorch-patterns", "benchmark"],
+    "ANALYZE": ["python-patterns", "benchmark"],
+    "SYNTHESIZE": ["python-patterns"],
+    "AUTORESEARCH": ["autonomous-loops", "eval-harness", "pytorch-patterns"],
+    "PARAMETER_GOLF": ["benchmark", "cost-aware-llm-pipeline"],
+    "DEEP_RESEARCH": ["deep-research", "search-first"],
+    "SWARM_RESEARCH": ["deep-research", "agentic-engineering"],
+    "DEERFLOW": ["agentic-engineering", "autonomous-agent-harness"],
+    "RL_TRAIN": ["pytorch-patterns", "eval-harness"],
+    "DEBATE": ["agentic-engineering"],
+    "DFT": ["python-patterns"],
+    "PAPER_REVIEW": ["deep-research", "verification-loop"],
+    "KAIROS": ["darklab-kairos-ops", "darklab-knowledge-wiki"],
+    "WIKI_COMPILE": ["darklab-knowledge-wiki", "darklab-memory-ops"],
+    "WIKI_LINT": ["darklab-knowledge-wiki"],
+    "EVAL_RUN": ["darklab-eval-harness", "benchmark"],
+    "PLAN_AUTHOR": ["darklab-plan-authoring", "darklab-model-routing"],
+    "MODEL_INSPECT": ["darklab-model-routing"],
+    "ORCHESTRATE": ["darklab-plan-authoring", "agentic-engineering"],
+    "ANE_RESEARCH": ["deep-research", "darklab-knowledge-wiki"],
+    "GEMMA_SWARM": ["agentic-engineering", "darklab-model-routing"],
+    "UNIPAT_SWARM": ["agentic-engineering", "python-patterns"],
+    "TURBO_SWARM": ["agentic-engineering", "darklab-swarm-ops"],
+    "FULL_SWARM": ["darklab-swarm-ops", "darklab-drvp-events"],
+}
 
 
 @dataclass
@@ -80,6 +191,9 @@ class ClaudeCodeAgent:
         max_turns: int = 10,
         timeout: float = 300.0,
         allowed_tools: list[str] | None = None,
+        skill: str | None = None,
+        ecc_agent: str | None = None,
+        task_type: str | None = None,
     ):
         self.working_dir = working_dir or Path.cwd()
         self._claude_bin = claude_bin
@@ -87,6 +201,9 @@ class ClaudeCodeAgent:
         self._max_turns = max_turns
         self._timeout = timeout
         self._allowed_tools = allowed_tools
+        self._skill = skill
+        self._ecc_agent = ecc_agent
+        self._task_type = task_type
 
     async def run(
         self,
@@ -96,6 +213,8 @@ class ClaudeCodeAgent:
         device: str = "leader",
         *,
         system_prompt: str | None = None,
+        skill: str | None = None,
+        task_type: str | None = None,
     ) -> ClaudeCodeResult:
         """Execute a prompt via Claude Code CLI.
 
@@ -105,7 +224,15 @@ class ClaudeCodeAgent:
             agent_name: Agent name for DRVP events
             device: Device name for DRVP events
             system_prompt: Optional system prompt override
+            skill: ECC skill name to load (overrides constructor)
+            task_type: DarkLab task type for auto skill mapping
         """
+        # Enrich system prompt with ECC skill context
+        system_prompt = self._enrich_with_ecc(
+            system_prompt,
+            skill=skill or self._skill,
+            task_type=task_type or self._task_type,
+        )
         cmd = self._build_command(prompt, system_prompt)
 
         await emit(DRVPEvent(
@@ -203,6 +330,49 @@ class ClaudeCodeAgent:
                 exit_code=1,
                 output=f"Error: {e}",
             )
+
+    def _enrich_with_ecc(
+        self,
+        system_prompt: str | None,
+        skill: str | None = None,
+        task_type: str | None = None,
+    ) -> str | None:
+        """Enrich system prompt with ECC skill/agent context.
+
+        Priority: explicit skill > task_type auto-map > ecc_agent > passthrough.
+        """
+        parts: list[str] = []
+
+        # 1. Load explicit skill
+        if skill:
+            content = load_ecc_skill(skill)
+            if content:
+                parts.append(f"# ECC Skill: {skill}\n\n{content}")
+                logger.debug("ecc_skill_loaded", extra={"skill": skill})
+
+        # 2. Auto-map from task type
+        if not skill and task_type:
+            mapped = TASK_SKILL_MAP.get(task_type.upper(), [])
+            for sk in mapped[:2]:  # Limit to 2 skills to avoid prompt bloat
+                content = load_ecc_skill(sk)
+                if content:
+                    parts.append(f"# ECC Skill: {sk}\n\n{content}")
+                    logger.debug("ecc_skill_auto_mapped", extra={"skill": sk, "task_type": task_type})
+
+        # 3. Load ECC agent persona
+        if self._ecc_agent:
+            content = load_ecc_agent(self._ecc_agent)
+            if content:
+                parts.append(f"# ECC Agent: {self._ecc_agent}\n\n{content}")
+                logger.debug("ecc_agent_loaded", extra={"agent": self._ecc_agent})
+
+        if not parts:
+            return system_prompt
+
+        ecc_context = "\n\n---\n\n".join(parts)
+        if system_prompt:
+            return f"{system_prompt}\n\n---\n\n{ecc_context}"
+        return ecc_context
 
     def _build_command(self, prompt: str, system_prompt: str | None) -> list[str]:
         """Build the CLI command arguments."""

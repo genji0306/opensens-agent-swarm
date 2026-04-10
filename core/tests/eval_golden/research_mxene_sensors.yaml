@@ -1,0 +1,19 @@
+task_id: research_mxene_sensors
+task_type: RESEARCH
+description: "Research MXene materials for pressure and chemical sensing"
+input: "Survey Ti3C2Tx MXene synthesis routes and their suitability for multi-modal pressure and chemical sensing in EIT arrays"
+ground_truth:
+  key_points:
+    - "HF etching"
+    - "delamination"
+    - "metallic conductivity"
+    - "surface terminations"
+    - "hydrophilicity"
+  verified_facts:
+    - "Ti3C2Tx MXene has metallic conductivity exceeding 6000 S/cm"
+    - "LiF/HCl route avoids direct HF handling"
+    - "surface terminations include -OH, -O, and -F groups"
+  expected_sources:
+    - "10.1002"
+    - "MXene"
+  expected_cost_usd: 0.0

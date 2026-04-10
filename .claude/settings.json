@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx --prefix \"${PROJECT_DIR}/frameworks/everything-claude-code\" block-no-verify@1.1.2"
+          }
+        ],
+        "description": "Block git --no-verify to protect pre-commit hooks",
+        "id": "pre:bash:block-no-verify"
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PROJECT_DIR}/frameworks/everything-claude-code/scripts/hooks/run-with-flags.js\" \"pre:config-protection\" \"scripts/hooks/config-protection.js\" \"standard,strict\"",
+            "timeout": 5
+          }
+        ],
+        "description": "Block modifications to linter/formatter config files",
+        "id": "pre:config-protection"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PROJECT_DIR}/frameworks/everything-claude-code/scripts/hooks/post-bash-command-log.js\" audit"
+          }
+        ],
+        "description": "Audit log all bash commands",
+        "id": "post:bash:command-log-audit"
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PROJECT_DIR}/frameworks/everything-claude-code/scripts/hooks/run-with-flags.js\" \"post:edit:console-warn\" \"scripts/hooks/post-edit-console-warn.js\" \"standard,strict\""
+          }
+        ],
+        "description": "Warn about console.log statements after edits",
+        "id": "post:edit:console-warn"
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$HOME/.darklab/logs\" && printf '{\"ts\":\"%s\",\"event\":\"knowledge.code.modified\"}\\n' \"$(date -u +%FT%TZ)\" >> \"$HOME/.darklab/logs/wiki-eval-events.jsonl\"",
+            "timeout": 2
+          }
+        ],
+        "description": "Journal edits to knowledge subsystem files for KAIROS to pick up",
+        "id": "post:edit:knowledge-journal"
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$HOME/.darklab/logs\" && printf '{\"ts\":\"%s\",\"event\":\"eval.golden.modified\"}\\n' \"$(date -u +%FT%TZ)\" >> \"$HOME/.darklab/logs/wiki-eval-events.jsonl\"",
+            "timeout": 2
+          }
+        ],
+        "description": "Journal edits to eval golden fixtures so CI gate baseline can be re-validated",
+        "id": "post:edit:eval-golden-journal"
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$HOME/.darklab/logs\" && printf '{\"ts\":\"%s\",\"event\":\"wiki.command.run\"}\\n' \"$(date -u +%FT%TZ)\" >> \"$HOME/.darklab/logs/wiki-eval-events.jsonl\"",
+            "timeout": 2
+          }
+        ],
+        "description": "Journal wiki-compile / wiki-lint command invocations",
+        "id": "post:bash:wiki-command-journal"
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p \"$HOME/.darklab/logs\" && printf '{\"ts\":\"%s\",\"event\":\"eval.command.run\"}\\n' \"$(date -u +%FT%TZ)\" >> \"$HOME/.darklab/logs/wiki-eval-events.jsonl\"",
+            "timeout": 2
+          }
+        ],
+        "description": "Journal eval-run / eval-report command invocations for regression tracking",
+        "id": "post:bash:eval-command-journal"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${PROJECT_DIR}/frameworks/everything-claude-code/scripts/hooks/run-with-flags.js\" \"stop:cost-tracker\" \"scripts/hooks/cost-tracker.js\" \"minimal,standard,strict\"",
+            "async": true,
+            "timeout": 10
+          }
+        ],
+        "description": "Track token and cost metrics per session",
+        "id": "stop:cost-tracker"
+      }
+    ]
+  },
+  "env": {
+    "CLAUDE_PLUGIN_ROOT": "${PROJECT_DIR}/frameworks/everything-claude-code",
+    "ECC_HOOK_PROFILE": "standard"
+  }
+}

@@ -1,0 +1,20 @@
+task_id: research_quantum_dot_electrodes
+task_type: RESEARCH
+description: "Research quantum dot electrode materials for EIT sensing"
+input: "Investigate CdSe and PbS quantum dot thin films as electrode materials for impedance-based chemical sensors"
+ground_truth:
+  key_points:
+    - "bandgap tunability"
+    - "surface functionalization"
+    - "charge transport"
+    - "sensitivity"
+    - "selectivity"
+  verified_facts:
+    - "CdSe quantum dots have size-tunable bandgaps between 1.7 and 2.4 eV"
+    - "PbS quantum dots exhibit strong near-infrared absorption"
+    - "ligand exchange affects charge carrier mobility"
+  expected_sources:
+    - "10.1021"
+    - "quantum dot"
+    - "electrode"
+  expected_cost_usd: 0.0

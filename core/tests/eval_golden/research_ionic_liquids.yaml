@@ -1,0 +1,17 @@
+task_id: research_ionic_liquids
+task_type: RESEARCH
+description: "Research ionic liquid properties for EIT sensors"
+input: "Research the properties of BMIM-BF4 and EMIM-TFSI ionic liquids for electrochemical impedance tomography"
+ground_truth:
+  key_points:
+    - "viscosity"
+    - "conductivity"
+    - "thermal stability"
+    - "electrochemical window"
+  verified_facts:
+    - "BMIM-BF4 has viscosity around 150 mPa·s at 25°C"
+    - "ionic liquids have wide electrochemical windows"
+  expected_sources:
+    - "10.1021"
+    - "ionic liquid"
+  expected_cost_usd: 0.0

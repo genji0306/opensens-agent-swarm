@@ -1,0 +1,16 @@
+task_id: research_nanowire_biosensors
+task_type: RESEARCH
+description: "Survey silicon and ZnO nanowire biosensors for label-free detection"
+input: "Research Si and ZnO nanowire field-effect biosensors for protein and DNA detection"
+ground_truth:
+  key_points:
+    - "Debye screening length limits detection range in physiological buffer"
+    - "Surface functionalization with APTES or PEG reduces nonspecific adsorption"
+    - "Detection limits of femtomolar DNA demonstrated with Si-NW FETs"
+    - "ZnO offers higher isoelectric point useful for protein binding"
+  verified_facts:
+    - "Debye length in 1x PBS is approximately 0.7 nm"
+  expected_sources:
+    - "pubmed.ncbi.nlm.nih.gov"
+    - "pubs.acs.org"
+  expected_cost_usd: 0.40

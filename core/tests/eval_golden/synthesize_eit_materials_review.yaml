@@ -1,0 +1,20 @@
+task_id: synthesize_eit_materials_review
+task_type: SYNTHESIZE
+description: "Synthesize findings from multiple EIT electrode material studies"
+input: "Synthesize research on graphene, PEDOT:PSS, MXene, and carbon nanotube electrode materials for flexible EIT sensor arrays"
+ground_truth:
+  key_points:
+    - "comparative analysis"
+    - "conductivity ranking"
+    - "flexibility"
+    - "biocompatibility"
+    - "cost effectiveness"
+  verified_facts:
+    - "MXene offers the highest conductivity among 2D materials for flexible sensors"
+    - "PEDOT:PSS provides the best balance of processability and performance"
+    - "carbon nanotubes require percolation threshold optimization"
+  expected_sources:
+    - "10.1002"
+    - "electrode"
+    - "flexible"
+  expected_cost_usd: 0.02

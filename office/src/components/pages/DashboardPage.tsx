@@ -10,8 +10,11 @@ import { ErrorState } from "@/components/console/shared/ErrorState";
 import { LoadingState } from "@/components/console/shared/LoadingState";
 import { ClusterStatusPanel } from "@/components/panels/ClusterStatusPanel";
 import { DecisionPanel } from "@/components/panels/DecisionPanel";
+import { EvalPanel } from "@/components/panels/EvalPanel";
+import { KairosPanel } from "@/components/panels/KairosPanel";
 import { RLStatusPanel } from "@/components/panels/RLStatusPanel";
 import { TurboQuantPanel } from "@/components/panels/TurboQuantPanel";
+import { WikiPanel } from "@/components/panels/WikiPanel";
 import { useDashboardStore } from "@/store/console-stores/dashboard-store";
 import { useOfficeStore } from "@/store/office-store";
 
@@ -134,6 +137,12 @@ export function DashboardPage() {
         <DecisionPanel />
         <RLStatusPanel />
         <TurboQuantPanel />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <KairosPanel />
+        <WikiPanel />
+        <EvalPanel />
       </div>
     </div>
   );

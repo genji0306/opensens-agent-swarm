@@ -8,7 +8,8 @@
   <img src="https://img.shields.io/badge/python-3.11+-3776ab?logo=python&logoColor=white" alt="Python 3.11+" />
   <img src="https://img.shields.io/badge/node-20+-339933?logo=node.js&logoColor=white" alt="Node 20+" />
   <img src="https://img.shields.io/badge/react-19-61dafb?logo=react&logoColor=white" alt="React 19" />
-  <img src="https://img.shields.io/badge/tests-581_passing-brightgreen" alt="581 Tests" />
+  <img src="https://img.shields.io/badge/tests-1385_passing-brightgreen" alt="1385 Tests" />
+  <img src="https://img.shields.io/badge/phase-25-8a2be2" alt="Phase 25" />
   <img src="https://img.shields.io/badge/license-proprietary-lightgrey" alt="License" />
 </p>
 
@@ -16,15 +17,47 @@
 
 ## What is this?
 
-**Opensens Agent Swarm (OAS)** is a self-governing AI research lab that runs autonomous scientific research on a Mac mini cluster. It merges:
+**Opensens Agent Swarm (OAS)** is a four-layer agentic research swarm running on the DarkLab Mac mini cluster. Under the v2 architecture (Phase 24+), authority, compute, and execution are split across explicit layers with hard non-overlap rules, multi-device human control, and cost-gated cloud escalation.
 
-- **DarkLab's agent infrastructure** &mdash; dispatch routing, budget enforcement, 16 research skills, multi-AI cross-validation
-- **Agentic frameworks** &mdash; LangGraph Swarm, OpenViking memory, agency-agents personas, deepagents harness, DeerFlow research
-- **Self-evolution** &mdash; OpenClaw-RL reinforcement learning on live conversations, MiroShark debate simulation for synthetic training
-- **Paperclip governance** &mdash; org chart, issues, approvals, budgets, cost ledger
-- **Agent Office visualization** &mdash; real-time 2D/3D digital office with DRVP event streaming
+- **Boss** &mdash; the human operator role, exercised from any enrolled device (MacBook / iPad / iPhone). Sovereign intent and approval authority.
+- **OAS Control Plane** &mdash; hosted zero-LLM service: plan store, approval queue, live timeline, override console, cost ledger, audit exporter.
+- **Leader** (cyber02, 16GB) &mdash; strategic orchestration: `OrchestratorAgent` with a Think-Act-Observe loop, `CampaignEngine`, `DecisionPolicyEngine`, KAIROS daemon, research adapters (DeerFlow, LabClaw, InternAgent, UniScientist). The only node that talks to paid APIs.
+- **DEV** (cyber01, 24GB) &mdash; execution + compute pool: Gemma worker pool (3× E4B), Gemma 4 27B MoE reasoning model, Qwen2.5-Coder 7B, simulation runner, MLX LoRA trainer. Runs under two OS identities (`dev-exec` for production, `dev-forge` for sandboxed self-improvement).
 
-Every request &mdash; from a Telegram command to a multi-step research campaign &mdash; flows through a governed pipeline with real-time visual feedback.
+The v2 roadmap is `docs/OAS-V2-MERGED-PLAN.md`. Phases 1–23 (shipped) provide the foundation: dispatch routing, 20 research skills, governance middleware, DRVP event bus, campaign engine, RL self-evolution, TurboQuant KV compression, multi-node scheduler, webhook SDK. Phase 24 adds the v2 swarm redesign (plan-file orchestrator, compute borrowing, 7-tier router, KAIROS daemon). **Phase 25 (current)** adds the LLM Wiki knowledge subsystem, eval-driven development harness, Generator-Evaluator loop, and harness layering that drops per-turn context cost from ~15K to ~2K tokens.
+
+### Phase 25 — LLM Wiki + Harness Engineering
+
+Phase 25 adds three things that compound agent quality across missions:
+
+- **LLM Wiki (`core/oas_core/knowledge/`)** — Karpathy-pattern compounding knowledge store. `KnowledgeIngester` turns every campaign step output into structured entities and claims (SQLite-backed `EntityStore`), compiles wiki pages, and feeds an embedded LanceDB vector index. A `RetrievalRouter` scopes reads by layer: Leader sees the full wiki, DEV only the entity store, Boss only L0 abstracts from OpenViking. Wire-compatible with KAIROS autoDream for nightly consolidation.
+- **Eval harness (`core/oas_core/eval/`)** — eval-driven development with a 5-dimension rubric (completeness 25%, accuracy 25%, source quality 20%, synthesis 20%, cost efficiency 10%) and 30 golden YAML fixtures covering the DarkLab research domain (EIT sensors, ionic liquids, DFT, materials science). `EvalRunner` produces markdown reports and emits regression events when scores drop more than 0.3 from baseline. The `CampaignEngine._run_step` loop scores output against the rubric and retries up to three times before accepting a weak result.
+- **Harness layering** — `CLAUDE.md` restructured from 716 lines (~15K tokens/turn) to ~110 lines of always-loaded L0 context. The deep material moved into seven on-demand DarkLab skills (`darklab-drvp-events`, `darklab-model-routing`, `darklab-kairos-ops`, `darklab-plan-authoring`, `darklab-memory-ops`, `darklab-knowledge-wiki`, `darklab-eval-harness`) that Claude Code loads only when relevant. Three new specialist agents (`knowledge-curator`, `gap-researcher`, `eval-analyst`) plug into the harness.
+
+Phase 25 also ships four new slash commands (`/wiki-compile`, `/wiki-lint`, `/eval-run`, `/eval-report`), two MCP servers (`model-router`, `openviking-memory`) that expose OAS internals as tools for external agents, and an mlx-embeddings helper that the KAIROS autoDream daemon uses for semantic deduplication (cosine similarity ≥ 0.85) with a hash-fallback path when the Apple Silicon embedding stack is unavailable.
+
+### Two primitives between Leader and DEV
+
+- **Task delegation** &mdash; DEV owns the logic and the compute ("build a DFT simulation"). JSON-RPC over WebSocket.
+- **Inference borrowing** &mdash; Leader owns the logic, DEV owns the compute ("run this prompt on your 27B model"). HTTP POST to DEV's `InferenceEndpoint`. Leader retains full planning authority; DEV acts as a model server for that one forward pass.
+
+Borrowing lets Leader reason with 27B-class quality despite only having 16GB of its own RAM, without blurring the authority model.
+
+### 7-tier model routing
+
+| Tier | Location | Gate |
+|---|---|---|
+| `PLANNING_LOCAL` | Leader (Gemma 4 E4B) | Automatic |
+| `REASONING_LOCAL` | DEV (Gemma 4 27B MoE Q4, borrowed) | Automatic |
+| `WORKER_LOCAL` | DEV (3× Gemma 4 E4B pool, borrowed) | Automatic, time-sliced |
+| `CODE_LOCAL` | DEV (Qwen2.5-Coder 7B) | DEV task delegation |
+| `RL_EVOLVED` | DEV (Qwen3 + per-agent LoRA) | Automatic when LoRA available |
+| `CLAUDE_SONNET` | Cloud | Per-mission budget cap |
+| `CLAUDE_OPUS` | Cloud | **Per-call Boss approval &mdash; no timeout-grant, no bypass** |
+
+Default path never touches Anthropic. Sonnet handles the ~10% of cases where local quality is insufficient. Opus is reserved for genuinely hard problems and always requires an explicit Boss approval through the OAS approval queue for every single call.
+
+Every request &mdash; from a Telegram command to a plan-file-driven research campaign &mdash; flows through a governed pipeline with real-time visual feedback and signed audit trails.
 
 ---
 
@@ -49,56 +82,59 @@ Every request &mdash; from a Telegram command to a multi-step research campaign 
   </tr>
 </table>
 
-### TurboMOQ: Hybrid KV-Cache Compression
-
-<p align="center">
-  <img src="docs/assets/turbomoq-infographic.png" alt="TurboMOQ: Hybrid KV-Cache Compression for Long-Context Local AI" width="960" />
-</p>
-
-<p align="center"><em>13.7x context expansion on Mac Mini M4 16GB — from 55K to 752K tokens per agent via split K/V strategy with progressive temporal tiering</em></p>
-
 ---
 
-## Architecture
+## Architecture (v2)
 
 ```
-                            +-----------------------+
-                            |   Boss (MacBook Pro)  |
-                            |  SSH / Telegram / Web |
-                            +-----------+-----------+
-                                        |
-                          Telegram msg / SSH cmd
-                                        |
-                                        v
-+-------------------------------  LEADER (Mac mini)  --------------------------------+
-|                                  192.168.23.25                                      |
-|                                                                                     |
-|   +-------------+   +-----------+   +----------------+   +-------------------+      |
-|   |  PicoClaw    |   | OpenClaw  |   | DarkLab Leader |   |    LiteLLM        |      |
-|   |  Telegram    |-->| Gateway   |-->|   FastAPI       |-->|  Model Router     |      |
-|   |  Bot         |   |  :18789   |   |    :8100        |   |    :4000          |      |
-|   +-------------+   +-----------+   +-------+--------+   +-------------------+      |
-|                                             |                                        |
-|   +-------------+   +-----------+   +-------v--------+   +-------------------+      |
-|   | Opensens    |   | Paperclip |   |     Redis       |   |   PostgreSQL      |      |
-|   | Office      |<--| AI Gov    |<--|    Pub/Sub      |   |    :5432          |      |
-|   |  :5180      |   |  :3100    |   |    :6379        |   |                   |      |
-|   +-------------+   +-----------+   +----------------+   +-------------------+      |
-|                                                                                     |
-+-------------------------------------------------------------------------------------+
-          |  OpenClaw node.invoke                    |  OpenClaw node.invoke
-          v                                          v
-+-------------------+                    +---------------------+
-| Academic (Mac mini)|                    | Experiment (Mac mini)|
-|                   |                    |                     |
-| - research        |                    | - simulate          |
-| - literature      |                    | - analyze           |
-| - doe             |                    | - synthetic         |
-| - paper           |                    | - report-data       |
-| - perplexity      |                    | - autoresearch      |
-| - browser_agent   |                    |                     |
-+-------------------+                    +---------------------+
++------------------------------------------------------------------+
+|  BOSS (human)   MacBook / iPad / iPhone                          |
+|  clients of OAS; zero local swarm state                          |
++-----------------------------+------------------------------------+
+                              |  HTTPS (Cloudflare Tunnel + Passkey)
+                              v
++------------------------------------------------------------------+
+|  OAS CONTROL PLANE  (hosted on DEV, interim)                     |
+|  Mission Launcher  Plan Store  Approval Queue  Live Timeline     |
+|  Override Console  Cost Ledger  Audit Exporter  PicoClaw adapter |
+|  ZERO LLM CALLS                                                  |
++--------------+---------------------------------------------------+
+               |  plan pull (HTTP)  approval verdicts  overrides
+               v
++------------------------------------------------------------------+
+|  LEADER   cyber02   16GB   leader.local                          |
+|  PlanStoreWatcher  OrchestratorAgent (TAO loop, Gemma E4B)       |
+|  CampaignEngine    DecisionPolicyEngine  UncertaintyRouter       |
+|  KAIROS daemon     Reflector  Knowledge Base  Lineage Graph      |
+|  Research adapters: DeerFlow, LabClaw, InternAgent, UniScientist |
+|  ModelRouter (7 tiers)  Redis DRVP bus  FastAPI :8100            |
++-----+------------------------------------------------------------+
+      |  task delegation (JSON-RPC)          ^  artifacts, metrics
+      |  inference borrowing (HTTP)          |  evidence, proposals
+      v                                      |
++------------------------------------------------------------------+
+|  DEV   cyber01   24GB   dev.local                                |
+|  identities:  dev-exec (production)  dev-forge (sandbox)         |
+|  Gemma pool (3x E4B)   Gemma 4 27B MoE Q4 (borrowed)             |
+|  Qwen2.5-Coder 7B      Simulation runner  Experiment harness     |
+|  MLX LoRA trainer      DevScheduler (two-queue cooperative)      |
+|  Paperclip + Postgres  OAS control plane (interim host)          |
++------------------------------------------------------------------+
 ```
+
+### Legacy (Phases 1–23, still active alongside v2)
+
+```
+Boss (MacBook) --> Telegram/PicoClaw --> Leader dispatch.py
+                                             |
+                                             v
+                              +---------------------------+
+                              | Academic  |  Experiment   |
+                              | (research)| (simulation)  |
+                              +---------------------------+
+```
+
+In Phase 24 the Academic/Experiment distinction collapses into DEV. Task routing happens internally on DEV via `DevScheduler` based on task type.
 
 ---
 
@@ -174,17 +210,21 @@ Opensens Agent Swarm/
 ├── core/                          # Shared framework (24+ modules, ~5,000 LOC)
 │   └── oas_core/
 │       ├── swarm.py               # LangGraph swarm builder
+│       ├── turbo_swarm/           # Performance orchestration layer (lazy loading, budgets, truncation)
+│       ├── team_runtime/          # Team state/event/worktree runtime primitives
 │       ├── handoff.py             # Governed handoff tool factory
 │       ├── memory.py              # OpenViking HTTP client + session continuity
 │       ├── persona.py             # Agency-agents persona loader (16 agents)
 │       ├── campaign.py            # Campaign engine (DAG + parallel execution)
+│       ├── campaign_journal.py    # Append-only campaign journal + integrity chain
 │       ├── evaluation.py          # Self-evaluation (rule + LLM scoring)
 │       ├── model_router.py        # Tiered model selection (PLANNING/EXECUTION/BOOST)
 │       ├── deep_agent.py          # Deepagents subprocess wrapper
 │       ├── sandbox.py             # NemoClaw sandbox manager
+│       ├── schemas/team.py        # Team manifest/worker/task/event schemas
 │       ├── middleware/            # Pipeline: budget → audit → governance → memory
 │       ├── protocols/             # DRVP events + unified event schema
-│       ├── adapters/              # Paperclip, OpenClaw, DeerFlow clients
+│       ├── adapters/              # Paperclip, OpenClaw, DeerFlow, ProRL clients
 │       └── subagents/             # Claude Code CLI sub-agent
 │
 ├── cluster/                       # DarkLab cluster agents & installer
@@ -223,7 +263,7 @@ Opensens Agent Swarm/
 
 ---
 
-## Research Skills (19)
+## Research Skills (20)
 
 | # | Skill | Node | Description |
 |---|-------|------|-------------|
@@ -246,6 +286,7 @@ Opensens Agent Swarm/
 | 17 | `deepresearch` | Leader | Iterative deep research with convergence scoring |
 | 18 | `swarmresearch` | Leader | Multi-angle parallel research (5 perspectives) |
 | 19 | `parametergolf` | Experiment | Compressed LM training under 16MB |
+| 20 | `turboswarm` | Leader | Maximum-performance 5-angle parallel research |
 
 ---
 
@@ -398,7 +439,7 @@ The Leader Mac mini runs the full service mesh:
   </tr>
   <tr>
     <td><strong>Testing</strong></td>
-    <td>pytest (491 tests), Vitest (28 tests)</td>
+    <td>pytest (core + cluster suites), Vitest (office)</td>
   </tr>
 </table>
 
@@ -406,7 +447,7 @@ The Leader Mac mini runs the full service mesh:
 
 ## Development Status
 
-82 tasks across 18 phases are **complete**.
+Phases 1–25 are shipped (1,385 tests passing, 110/110 tasks for Phases 1–23, v2 redesign for Phase 24, LLM Wiki + harness engineering for Phase 25). See `docs/OAS-V2-MERGED-PLAN.md` for the canonical plan.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
@@ -428,6 +469,48 @@ The Leader Mac mini runs the full service mesh:
 | 16. Qwen3 Multi-Model | Specialist routing, RL_EVOLVED+TurboQuant 12k context | Done |
 | 17. Office + Registry | Swarm registry, RLStatusPanel, TurboQuantPanel, DRVP handlers | Done |
 | 18. Research Mgmt | /results, /schedule, LLM synthesizer, Dashboard wiring | Done |
+| 19. Team Runtime Foundation | Team schemas, file state store, lifecycle events, worktree guard, journal bridge | Done |
+| 20. ProRL Sidecar Integration (Phase 1-2) | ProRL adapter, config surface, `/prorl-status`, `/prorl-run`, DRVP + governance linkage | Done |
+| 21. Governance Maturity | Campaign journal (hash chain), template library, lineage graph, audit export, signed approvals | Done |
+| 22. Multi-Node Foundation | Redis task queue, heartbeat, resource-aware scheduler, capability discovery, failure isolation | Done |
+| 23. Platformization | Webhook event layer (HMAC-SHA256), Python SDK (sync+async), partner console | Done |
+| 24. v2 Swarm Redesign | Boss/Leader/DEV four-layer split, plan-file protocol, compute borrowing, 7-tier ModelRouter, OpusGate, KAIROS, DEV online | Done |
+| 25. LLM Wiki + Harness Engineering | Knowledge subsystem, eval harness, Generator-Evaluator loop, CLAUDE.md layering, 7 DarkLab skills, 3 specialist agents, 2 MCP servers, mlx-embeddings autoDream | **Done** |
+| 26. Self-evolution + Multi-device | 6-gate promotion pipeline, frozen benchmarks, shadow runs, auto-rollback, Passkey/WebAuthn, iPad/iPhone UI | Planned |
+| 27. Scaling primitives | Generalized NodeDescriptor, capability tags, affinity hints, provisioning script | Planned |
+
+### Phase 19 Highlights (2026-04-01)
+
+- Added OAS-native team schemas: manifest, worker, task, event contracts.
+- Added `team_runtime` package with deterministic state paths, event JSONL persistence, backend registry, and worktree isolation manager.
+- Wired leader dispatch lifecycle into team runtime (`task.created/started/completed/failed`) with best-effort DRVP + persistent event logging.
+- Added governance worktree guard for mutating tasks (`requires_worktree` / `mutating` payload flags).
+- Added bridge sync from `events.jsonl` into `CampaignJournal` with checkpointing for replay-ready dashboards.
+- Extended `/status` to include live team runtime summary (team count, task count, event count).
+
+### Phase 20 Highlights (2026-04-02)
+
+- Added `core/oas_core/adapters/prorl.py` with async status, registration, startup, and `/process` normalization into a stable OAS envelope.
+- Added ProRL runtime config in `cluster/agents/shared/config.py` and `cluster/configs/env.template` (`DARKLAB_PRORL_*` variables).
+- Added leader commands `/prorl-status` and `/prorl-run` with Telegram-safe aliases (`/prorl_status`, `/prorl_run`).
+- Wired DRVP tool events and best-effort Paperclip issue linkage for `/prorl-run` experimental executions.
+- Added adapter and command tests covering health, normalization, route wiring, and guarded `/rl-train --backend prorl` behavior.
+
+### Phase 25 Highlights (2026-04-10)
+
+- **Knowledge subsystem** — `core/oas_core/knowledge/` with `KnowledgeIngester`, `EntityStore` (SQLite, 3 tables), `EmbeddingIndex` (LanceDB wrapper with import guard), `RetrievalRouter` (role-scoped: Leader / DEV / Boss), and frozen Pydantic types.
+- **Eval subsystem** — `core/oas_core/eval/` with `EvalScorer` (5-dimension weighted rubric), `EvalRunner` (YAML golden set loader, markdown report generator), and `EvalReport` with per-task-type breakdown.
+- **30 golden fixtures** — `core/tests/eval_golden/` covering EIT sensors, ionic liquids, DFT simulations, wearable electronics, and materials science.
+- **Eval CI gate** — `core/tests/test_eval_ci_gate.py` enforces golden fixture schema, scoring ranges, and minimum fixture count to block regressions at merge time.
+- **Generator-Evaluator loop** — `CampaignEngine._run_step` scores output against the rubric and retries up to three times (configurable via `_EVAL_MAX_RETRIES`) before accepting a weak step result.
+- **Four new slash commands** — `/wiki-compile`, `/wiki-lint`, `/eval-run`, `/eval-report` with handlers in `cluster/agents/leader/wiki_eval_cmd.py`.
+- **Harness layering** — CLAUDE.md restructured 716 → ~110 lines. Deep detail moved into seven on-demand DarkLab skills in `.claude/skills/`. Three new specialist agents: `knowledge-curator`, `gap-researcher`, `eval-analyst`.
+- **KAIROS autoDream semantic merge** — `_merge_similar()` upgraded from prefix matching to cosine similarity via an optional `embedding_fn`. Pure Python `_cosine_similarity()` is forked-worker safe. `oas_core.knowledge.embeddings.get_embedding_fn()` returns an mlx-embeddings-backed function on Apple Silicon and falls back to a deterministic hash embedding when unavailable.
+- **Two MCP servers** — `core/oas_core/mcp/model_router.py` exposes the 7-tier router and policy rules; `core/oas_core/mcp/openviking_memory.py` exposes tiered memory read/write, semantic search, and session context. Both run as stdio MCP servers for external tool use.
+- **Eight new DRVP event types** — `KNOWLEDGE_INGESTED`, `KNOWLEDGE_CONFLICT_DETECTED`, `KNOWLEDGE_CONFLICT_AUTO_RESOLVED`, `KNOWLEDGE_PAGE_COMPILED`, `WIKI_LINT_COMPLETED`, `WIKI_SYNC_COMPLETED`, `EVAL_RUN_COMPLETED`, `EVAL_REGRESSION_DETECTED`.
+- **Office panels** — `WikiPanel.tsx` (entities/claims/pages grid, conflict resolution state, lint indicator) and `EvalPanel.tsx` (weighted score gauge, delta from previous run, per-dimension bars, regression badge). Both wired into `DashboardPage.tsx` alongside the existing KAIROS panel.
+- **Four PostToolUse hooks** — `.claude/settings.json` journals wiki and eval events to `~/.darklab/logs/wiki-eval-events.jsonl` for KAIROS to pick up.
+- **Tests** — 1,061 core + 324 cluster + 28 office = **1,413 passing**. Core grew from 881 to 1,061 (+180 new tests) covering knowledge, eval, embeddings, MCP servers, and CI gates.
 
 ---
 

@@ -1,0 +1,23 @@
+task_id: deep_research_eit_reconstruction
+task_type: DEEP_RESEARCH
+description: "Deep research on EIT image reconstruction algorithms"
+input: "Conduct deep research on state-of-the-art EIT image reconstruction: compare traditional (GREIT, D-bar) with deep learning approaches (U-Net, conditional GANs) for medical and industrial applications"
+ground_truth:
+  key_points:
+    - "GREIT framework"
+    - "D-bar method"
+    - "U-Net architecture"
+    - "conditional GAN"
+    - "spatial resolution"
+    - "real-time capability"
+  verified_facts:
+    - "GREIT provides a standardized reconstruction framework with defined figures of merit"
+    - "deep learning approaches achieve sub-second reconstruction times"
+    - "D-bar is a direct non-iterative method based on scattering theory"
+    - "learned approaches require large training datasets or physics-informed priors"
+  expected_sources:
+    - "10.1088"
+    - "reconstruction"
+    - "deep learning"
+    - "EIT"
+  expected_cost_usd: 0.05

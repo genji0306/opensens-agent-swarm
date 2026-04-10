@@ -34,6 +34,8 @@ class TestRoutingTableCompleteness:
         "darklab-unipat-swarm",
         "darklab-orchestrator",
         "darklab-kairos",
+        "darklab-knowledge-wiki",
+        "darklab-eval-harness",
     }
 
     def test_all_skills_routable(self):
@@ -41,7 +43,7 @@ class TestRoutingTableCompleteness:
         assert routed_skills == self.EXPECTED_SKILLS
 
     def test_route_count(self):
-        assert len(ROUTING_TABLE) == 36
+        assert len(ROUTING_TABLE) == 40
 
     def test_all_routes_have_valid_nodes(self):
         valid_nodes = {"academic", "experiment", "leader"}
