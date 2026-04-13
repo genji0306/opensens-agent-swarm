@@ -84,6 +84,16 @@ from shared.node_bridge import run_agent
 
 logger = structlog.get_logger("darklab.dispatch")
 
+_GOVERNED_OPERATOR_SOURCES = {
+    "picoclaw",
+    "telegram",
+    "boss",
+    "zalo",
+    "zalo-openclaw",
+    "telegram-openclaw",
+    "ingress",
+}
+
 # --- Swarm singleton (lazy init) ---
 
 _UNINITIALIZED = object()  # sentinel to distinguish "not yet init" from "init returned None"
@@ -208,9 +218,11 @@ def _get_campaign_engine():
                     return resp.json()
             return {"action": "dispatch", "route": {"node": route.node, "skill": route.skill}}
 
+        _golden_dir = Path(__file__).resolve().parents[3] / "core" / "tests" / "eval_golden"
         _campaign_engine = CampaignEngine(
             step_executor=step_executor,
             governance=_get_governance(),
+            eval_golden_dir=_golden_dir if _golden_dir.exists() else None,
         )
     except Exception as exc:
         logger.warning("campaign_engine_init_error", error=str(exc))
@@ -793,11 +805,11 @@ async def pre_dispatch_hook(task: Task, text: str) -> dict | None:
 
     # --- Governance: auto-create issue for PicoClaw requests ---
     gov = _get_governance()
-    if gov and source in ("picoclaw", "telegram", "boss"):
+    if gov and str(source).lower() in _GOVERNED_OPERATOR_SOURCES:
         try:
             issue = await gov.open_issue(
                 request_id=request_id,
-                title=text[:120] or "PicoClaw request",
+                title=text[:120] or "Operator request",
                 agent_name="LeaderDispatch",
                 device="leader",
                 description=f"Auto-created from {source} request",
@@ -891,7 +903,12 @@ ROUTING_TABLE: dict[str, Route] = {
     "turboq-status":Route("leader",      "darklab-rl-train",     TaskType.TURBOQ_STATUS),
     # Research management
     "results":      Route("leader",      "darklab-deepresearch",  TaskType.RESULTS),
+    "campaign-result": Route("leader",      "darklab-deepresearch",  TaskType.CAMPAIGN_RESULT),
+    "review-result": Route("leader",      "darklab-deepresearch",  TaskType.REVIEW_RESULT),
+    "plans":        Route("leader",      "darklab-deepresearch",  TaskType.PLAN),
     "schedule":     Route("leader",      "darklab-deepresearch",  TaskType.SCHEDULE),
+    "loops":        Route("leader",      "darklab-deepresearch",  TaskType.LOOPS),
+    "stop-loop":    Route("leader",      "darklab-deepresearch",  TaskType.STOP_LOOP),
     # Full swarm pipeline
     "fullswarm":    Route("leader",      "darklab-fullswarm",     TaskType.FULL_SWARM),
     # TurboSwarm (max-performance orchestration)
@@ -933,8 +950,15 @@ COMMAND_ALIASES: dict[str, str] = {
     "approve": "fullswarm",
     "reject": "fullswarm",
     "discover": "fullswarm",
+    "continue": "fullswarm",
+    "pause": "fullswarm",
+    "inspect": "fullswarm",
+    "edit": "fullswarm",
     "full_swarm": "fullswarm",
     "report_data": "report-data",
+    "campaign_result": "campaign-result",
+    "stop_loop": "stop-loop",
+    "loop": "loops",
     "rl_train": "rl-train",
     "rl_status": "rl-status",
     "rl_rollback": "rl-rollback",
@@ -982,6 +1006,11 @@ Management
   /fullswarm status     — list swarm runs
   /fullswarm resume <id> — resume paused run
   /results [N]          — recent research results
+  /campaign-result <id> — inspect mission/run receipt + artifacts
+  /review-result <q>    — score and route a result into the proof loop
+  /plans [N|auto]       — active plan files on Leader
+  /loops [all]          — active/stale research loops
+  /stop-loop <target>   — stop a looped research target
   /schedule <topic>     — schedule recurring research
   /boost on|off|status  — toggle free AI models
 
@@ -1157,7 +1186,16 @@ def _get_local_handler(command: str):
 
     handler = None
     try:
-        if command == "deerflow":
+        if command == "research":
+            from academic.research import handle
+            handler = handle
+        elif command == "literature":
+            from academic.literature import handle
+            handler = handle
+        elif command == "perplexity":
+            from academic.perplexity import handle
+            handler = handle
+        elif command == "deerflow":
             from experiment.deerflow_research import handle
             handler = handle
         elif command == "autoresearch":
@@ -1205,8 +1243,23 @@ def _get_local_handler(command: str):
         elif command == "results":
             from leader.research_mgmt_cmd import handle_results as handle
             handler = handle
+        elif command == "campaign-result":
+            from leader.research_mgmt_cmd import handle_campaign_result as handle
+            handler = handle
+        elif command == "review-result":
+            from leader.research_mgmt_cmd import handle_review_result as handle
+            handler = handle
+        elif command == "plans":
+            from leader.research_mgmt_cmd import handle_plans as handle
+            handler = handle
         elif command == "schedule":
             from leader.research_mgmt_cmd import handle_schedule as handle
+            handler = handle
+        elif command == "loops":
+            from leader.research_mgmt_cmd import handle_loops as handle
+            handler = handle
+        elif command == "stop-loop":
+            from leader.research_mgmt_cmd import handle_stop_loop as handle
             handler = handle
         elif command == "fullswarm":
             from leader.fullswarm_cmd import handle
@@ -1438,6 +1491,24 @@ async def handle(task: Task) -> TaskResult:
     if command == "boost":
         return await _handle_boost_command(task, args)
 
+    if command == "report-data" and not args.strip():
+        return TaskResult(
+            task_id=task.task_id,
+            agent_name="LeaderDispatch",
+            status="error",
+            result={
+                "error": "report-data requires input data or a scope to render.",
+                "output": (
+                    "report-data needs input.\n"
+                    "Usage:\n"
+                    "- /report_data <scope>\n"
+                    "- /report_data figures for <topic>\n"
+                    "If you want recent outcomes, use /results."
+                ),
+                "command": "report-data",
+            },
+        )
+
     if command and command in ROUTING_TABLE:
         route = ROUTING_TABLE[command]
         log_event("dispatch", command=command, target_node=route.node, skill=route.skill)
@@ -1452,29 +1523,49 @@ async def handle(task: Task) -> TaskResult:
             )
         command_payload = _build_command_payload(task.payload, args)
 
-        # Leader-local commands: execute handler directly if registered
-        if route.node == "leader":
-            handler = _get_local_handler(command)
-            if handler:
-                try:
-                    task.payload = command_payload
-                    await _team_runtime_mark_started(task, command, route, args)
-                    result = await handler(task)
-                    log_event("dispatch_local_ok", command=command)
-                    await _team_runtime_mark_completed(task, command, route, result)
-                    return result
-                except Exception as exc:
-                    logger.warning("local_handler_failed", command=command, error=str(exc))
-                    await _team_runtime_mark_failed(task, command, route, str(exc))
-                    return TaskResult(
-                        task_id=task.task_id,
-                        agent_name="LeaderDispatch",
-                        status="error",
-                        result={"error": str(exc), "command": command},
-                    )
+        node_url = _node_url(route.node)
+        handler = _get_local_handler(command)
+
+        if command == "parametergolf" and node_url is None and handler is None:
+            await _team_runtime_mark_failed(
+                task,
+                command,
+                route,
+                "PARAMETER_GOLF is not deployed: no experiment node or local handler is available.",
+            )
+            return TaskResult(
+                task_id=task.task_id,
+                agent_name="LeaderDispatch",
+                status="error",
+                result={
+                    "error": "PARAMETER_GOLF is not deployed on this cluster. No experiment node or local handler is available.",
+                    "command": command,
+                    "route": {"node": route.node, "skill": route.skill},
+                },
+            )
+
+        # Execute locally when:
+        # - the route is Leader-local, or
+        # - the route is remote but no remote node is configured and a local fallback exists.
+        if handler and (route.node == "leader" or node_url is None):
+            try:
+                task.payload = command_payload
+                await _team_runtime_mark_started(task, command, route, args)
+                result = await handler(task)
+                log_event("dispatch_local_ok", command=command)
+                await _team_runtime_mark_completed(task, command, route, result)
+                return result
+            except Exception as exc:
+                logger.warning("local_handler_failed", command=command, error=str(exc))
+                await _team_runtime_mark_failed(task, command, route, str(exc))
+                return TaskResult(
+                    task_id=task.task_id,
+                    agent_name="LeaderDispatch",
+                    status="error",
+                    result={"error": str(exc), "command": command},
+                )
 
         # Try direct HTTP forwarding if node address is configured
-        node_url = _node_url(route.node)
         if node_url:
             try:
                 await _team_runtime_mark_started(task, command, route, args)

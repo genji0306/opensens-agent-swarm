@@ -43,7 +43,7 @@ class TestRoutingTableCompleteness:
         assert routed_skills == self.EXPECTED_SKILLS
 
     def test_route_count(self):
-        assert len(ROUTING_TABLE) == 40
+        assert len(ROUTING_TABLE) == 45
 
     def test_all_routes_have_valid_nodes(self):
         valid_nodes = {"academic", "experiment", "leader"}
@@ -134,7 +134,8 @@ class TestDispatchHandler:
     @pytest.mark.asyncio
     async def test_known_command_dispatches(self):
         task = Task(task_type=TaskType.RESEARCH, payload={"text": "/research MnO2 sensors"})
-        with patch("leader.dispatch.log_event"):
+        with patch("leader.dispatch.log_event"), \
+             patch("leader.dispatch._get_local_handler", return_value=None):
             result = await handle(task)
         assert result.status == "ok"
         assert result.result["action"] == "dispatch"
@@ -151,6 +152,7 @@ class TestDispatchHandler:
     async def test_team_runtime_pending_recorded_for_remote_dispatch(self):
         task = Task(task_type=TaskType.RESEARCH, payload={"text": "/research TiO2 nanotubes"})
         with patch("leader.dispatch.log_event"), \
+             patch("leader.dispatch._get_local_handler", return_value=None), \
              patch("leader.dispatch._team_runtime_record_pending", new_callable=AsyncMock) as pending, \
              patch("leader.dispatch._team_runtime_mark_started", new_callable=AsyncMock) as started, \
              patch("leader.dispatch._team_runtime_mark_completed", new_callable=AsyncMock) as completed, \
@@ -234,7 +236,8 @@ class TestDispatchHandler:
     @pytest.mark.asyncio
     async def test_perplexity_command_dispatches(self):
         task = Task(task_type=TaskType.PERPLEXITY, payload={"text": "/perplexity latest EIT papers"})
-        with patch("leader.dispatch.log_event"):
+        with patch("leader.dispatch.log_event"), \
+             patch("leader.dispatch._get_local_handler", return_value=None):
             result = await handle(task)
         assert result.status == "ok"
         assert result.result["action"] == "dispatch"

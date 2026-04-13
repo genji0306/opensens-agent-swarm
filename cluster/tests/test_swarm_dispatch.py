@@ -35,7 +35,8 @@ class TestSlashCommandFastPath:
 
         with patch("leader.dispatch.get_swarm_app", new_callable=AsyncMock) as mock_get:
             with patch("leader.dispatch._node_url", return_value=None):
-                result = await handle(task)
+                with patch("leader.dispatch._get_local_handler", return_value=None):
+                    result = await handle(task)
 
             # Swarm should never be called for slash commands
             mock_get.assert_not_called()
